@@ -20,4 +20,4 @@ obj/%.o:src/%.c
 	${CC} ${O_FLAGS} $@ $^
 
 clean:
-	rm -rf ${OBJECTS} ${SERVER_OBJ} ${TEST_OBJ} ${SERVER} ${TEST}
+	rm -rf ${OBJECTS} ${SERVER_OBJ} ${TEST_OBJ} ${SERVER} ${TEST} obj bin
