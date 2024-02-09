@@ -5,13 +5,8 @@ OBJECTS= obj/tuple_space_API.o obj/tuple_space_linked_list.o obj/application_lay
 HEADERS= headers/alp_error.h headers/application_layer_protocol.h headers/tuple_space_API.h headers/tuple_space_linked_list.h 
 SERVER=bin/server
 SERVER_OBJ=obj/server.o
-TEST=bin/test 
-TEST_OBJ=obj/test.o
 
-all: ${TEST} ${SERVER}
-
-${TEST}: ${OBJECTS} ${HEADERS} ${TEST_OBJ}
-	${CC} ${FLAGS} ${TEST} ${TEST_OBJ} ${OBJECTS}
+all: ${SERVER}
 
 ${SERVER}: ${OBJECTS} ${HEADERS} ${SERVER_OBJ}
 	${CC} ${FLAGS} ${SERVER} ${SERVER_OBJ} ${OBJECTS}
@@ -20,4 +15,4 @@ obj/%.o:src/%.c
 	${CC} ${O_FLAGS} $@ $^
 
 clean:
-	rm -rf ${OBJECTS} ${SERVER_OBJ} ${TEST_OBJ} ${SERVER} ${TEST} obj bin
+	rm -rf ${OBJECTS} ${SERVER_OBJ} ${SERVER} ${TEST}

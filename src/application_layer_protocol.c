@@ -1,10 +1,12 @@
 #include "../headers/application_layer_protocol.h"
 
+
 extern int alp_error;
 extern int errno_save;
 static int is_socket_created = 0;
 static int sockfd = 0;
 static struct sockaddr other_host;
+
 
 /* TODO:
         - Need to modify protocol
@@ -20,95 +22,131 @@ static struct sockaddr other_host;
  */
 
 // Getting address info
-int alp_getaddrinfo(char *ip, char *port, struct addrinfo *alp_addrinfo)
+int alp_getaddrinfo( char *ip, char *port, struct addrinfo *alp_addrinfo )
 {
-    struct addrinfo h, r, *a = &r; // Segfault when passing address of pointer of struct cause uninitialized???
-    memset(&h, 0, sizeof(struct addrinfo));
+
+    struct addrinfo h, r, *a = &r; 
+
+
+    memset( &h, 0, sizeof(struct addrinfo) );
     h.ai_family = PF_INET;
     h.ai_socktype = SOCK_DGRAM;
     h.ai_flags = AI_PASSIVE;
-    alp_error = getaddrinfo(ip, port, &h, &a);
-    if (alp_error != 0)
+
+
+    alp_error = getaddrinfo( ip, port, &h, &a );
+    if ( alp_error != 0 )
     {
+
         errno_save = errno;
         return GETTADDRINFO_ERROR;
+
     }
     else
     {
-        memcpy(alp_addrinfo, a, sizeof(struct addrinfo));
+
+        memcpy( alp_addrinfo, a, sizeof(struct addrinfo) );
         alp_addrinfo->ai_next = NULL;
-        freeaddrinfo(a);
+        freeaddrinfo( a );
         return ALP_SUCCESS;
+
     }
 }
 
 // Creating socket
-int alp_create_sockfd(char *port)
+int alp_create_sockfd( char *port )
 {
-    if (is_socket_created == 0)
+
+    if ( is_socket_created == 0 )
     {
+
         struct addrinfo c, *d = NULL;
         d = &c;
-        alp_error = alp_getaddrinfo(NULL, port, d);
-        if (check_error(alp_error))
+        
+
+        alp_error = alp_getaddrinfo( NULL, port, d );
+        if ( check_error(alp_error) )
         {
             return ADDRINFO_SOCKET_CREATION_ERROR;
         }
 
-        sockfd = socket(c.ai_family, c.ai_socktype, c.ai_protocol);
-        if (sockfd == -1)
+
+        sockfd = socket( c.ai_family, c.ai_socktype, c.ai_protocol );
+        if ( sockfd == -1 )
         {
             errno_save = errno;
             return SOCKET_ERROR;
         }
 
-        alp_error = bind(sockfd, c.ai_addr, c.ai_addrlen);
-        if (alp_error == -1)
+
+        alp_error = bind( sockfd, c.ai_addr, c.ai_addrlen );
+        if ( alp_error == -1 )
         {
             errno_save = errno;
             return BIND_ERROR;
         }
+
+
         is_socket_created = 1;
         return ALP_SUCCESS;
+
     }
     else
     {
+
         return SOCKET_ALERADY_EXISTS_ERROR;
+
     }
 }
 
-int check_operation(struct alp_message message)
+int check_operation( struct alp_message message )
 {
-    if (message.header.payload_type == ALP_BIN_OUT_PAYLOAD)
+
+    if ( message.header.payload_type == ALP_BIN_OUT_PAYLOAD )
     {
+
         return ALP_OUT_OPERATION;
+
     }
-    if (message.header.payload_type == ALP_BIN_RDP_PAYLOAD)
+    if ( message.header.payload_type == ALP_BIN_RDP_PAYLOAD )
     {
+
         return ALP_RDP_OPERATION;
+
     }
-    if (message.header.payload_type == ALP_BIN_INP_PAYLOAD)
+    if ( message.header.payload_type == ALP_BIN_INP_PAYLOAD )
     {
+
         return ALP_INP_OPERATION;
+
     }
+
+
     return 0;
+
 }
 
-int prepare_alp_message(char *message, struct alp_message *msg_to_prepare, int operation, int rdp_flag)
+int prepare_alp_message( char *message, struct alp_message *msg_to_prepare, int operation, int rdp_flag )
 {
-    if (operation == ALP_ACK_OPERATION)
+
+    if ( operation == ALP_ACK_OPERATION )
     {
-        memset(msg_to_prepare, 0, sizeof(struct alp_message));
+         
+        memset( msg_to_prepare, 0, sizeof(struct alp_message) );
         msg_to_prepare->header.acknowledge = ALP_BIN_ACK_FLAG;
         msg_to_prepare->header.payload_type = ALP_BIN_ACK_PAYLOAD;
         msg_to_prepare->header.sequence_number = 0b0;
+
     }
-    if (operation == ALP_RDP_OPERATION)
+    if ( operation == ALP_RDP_OPERATION )
     {
-        memset(msg_to_prepare, 0, sizeof(struct alp_message));
-        msg_to_prepare->header.acknowledge = ALP_BIN_RDP_NO_FLAG;
+
+        memset( msg_to_prepare, 0, sizeof(struct alp_message) );
         msg_to_prepare->header.payload_type = ALP_BIN_RDP_PAYLOAD;
-        if (rdp_flag)
+        msg_to_prepare->header.sequence_number = 0b0;
+
+
+        if ( rdp_flag )
         {
             msg_to_prepare->header.rdp_result = ALP_BIN_RDP_YES_FLAG;
         }
@@ -116,55 +154,90 @@ int prepare_alp_message(char *message, struct alp_message *msg_to_prepare, int o
         {
             msg_to_prepare->header.rdp_result = ALP_BIN_RDP_NO_FLAG;
         }
+
+
         msg_to_prepare->header.sequence_number = 0b0;
-        memcpy((void *)&msg_to_prepare->payload, (void *)message, PAYLOAD_SIZE);
+        memcpy( (void *)&msg_to_prepare->payload, (void *)message, PAYLOAD_SIZE );
+
     }
+    if ( operation == ALP_INP_OPERATION )
+    {
+
+        memset( msg_to_prepare, 0, sizeof(struct alp_message) );
+        msg_to_prepare->header.payload_type = ALP_BIN_INP_PAYLOAD;
+        msg_to_prepare->header.sequence_number = 0b0;
+        memcpy( (void *)&msg_to_prepare->payload, (void *)message, PAYLOAD_SIZE );
+
+    }
+
+
     return ALP_SUCCESS;
+
 }
 
 // Alp sendto() implemntation
-int alp_sendto(struct alp_message *message, int alp_message_len, struct sockaddr *a_in, int a_in_len)
+int alp_sendto( struct alp_message *message, int alp_message_len, struct sockaddr *a_in, int a_in_len )
 {
     int sent = 0;
     char msg[ALP_MESSAGE_MAXSIZE];
-    memcpy((void *)msg, (void *)message, ALP_MESSAGE_MAXSIZE);
-    sent = sendto(sockfd, msg, alp_message_len, 0, a_in, a_in_len);
-    if (sent <= 0)
+
+
+    memcpy( (void *)msg, (void *)message, ALP_MESSAGE_MAXSIZE );
+
+
+    sent = sendto( sockfd, msg, alp_message_len, 0, a_in, a_in_len );
+    if ( sent <= 0 )
     {
+
         errno_save = errno;
         return SENDTO_ERROR;
+
     }
     else
     {
-        printf("\nALP: Message of %d bytes sent\n\n", sent);
+
+        //printf( "ALP: Message of %d bytes sent\n", sent );
         return sent;
+
     }
+
 }
 
 // Alp recvfrom() implemntation
-int alp_recvfrom(char *buffer, int buffer_len, struct sockaddr *a_in, int a_in_len)
+int alp_recvfrom( char *buffer, int buffer_len, struct sockaddr *a_in, int a_in_len )
 {
-    memset(buffer, 0, buffer_len);
+
     int pos = 0;
+
+
+    memset( buffer, 0, buffer_len );
+
+
     if (pos = recvfrom(sockfd, buffer, buffer_len, 0, a_in, &a_in_len) < 0)
     {
+
         errno_save = errno;
         return RECVROM_ERROR;
+
     }
     else
     {
+
         return pos;
+
     }
+
 }
 
-int alp_send_routine(char *message, int operation, int rdp_result)
+int alp_send_routine( char *message, int operation, int rdp_result )
 {
+
     // Initializations
-    int ack = 0;
     struct sockaddr saved_other_host;
     struct alp_message send_message;
     struct alp_message inc_message;
     char buff[ALP_MESSAGE_MAXSIZE];
+    int resend_counter = 0;
     int x = 0;
     fd_set readfds, readyfds;
     struct timeval stv, ttv, dttv, sttv;
@@ -173,68 +246,113 @@ int alp_send_routine(char *message, int operation, int rdp_result)
     ttv.tv_sec = TIMEOUT_SEC;
     ttv.tv_usec = TIMEOUT_USEC;
 
-    // Preparing sets for select()
-    memset(&inc_message, 0, sizeof(struct alp_message));
-    memset(&send_message, 0, sizeof(struct alp_message));
-    memset(&saved_other_host, 0, sizeof(struct sockaddr));
 
-    prepare_alp_message(message, &send_message, operation, rdp_result);
-    ;
+    // Preparing sets for select()
+    memset( &inc_message, 0, sizeof(struct alp_message) );
+    memset( &send_message, 0, sizeof(struct alp_message) );
+    memset( &saved_other_host, 0, sizeof(struct sockaddr) );
+
+
+    prepare_alp_message( message, &send_message, operation, rdp_result );
+
+
     // Sending first message and starting timeout clock
-    alp_error = alp_sendto(&send_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(other_host));
-    if (check_error(alp_error))
+    alp_error = alp_sendto( &send_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(other_host) );
+    if ( check_error(alp_error) )
     {
+
         return SEND_ROUTINE_SENDFIRSTMSG_ERROR;
+
     }
+    printf( "   ALP: Payload message sent\n" );
     saved_other_host = other_host;
-    gettimeofday(&sttv, NULL);
+    gettimeofday( &sttv, NULL );
+
 
     // Waiting for ACK
-    while (ack == ALP_NOT_ACKNOWLEDGED)
+    while ( 1 )
     {
-        FD_ZERO(&readfds);
-        FD_SET(sockfd, &readfds);
+
+        FD_ZERO( &readfds );
+        FD_SET( sockfd, &readfds );
         readyfds = readfds;
-        x = select(1024, &readyfds, NULL, NULL, &stv);
-        if (x < 0)
+
+
+        x = select( 1024, &readyfds, NULL, NULL, &stv );
+        if ( x < 0 )
         {
+
             errno_save = errno;
             return SEND_ROUTINE_SELECT_ERROR;
+
         }
-        else if (x > 0)
+        else if ( x > 0 )
         {
-            if (FD_ISSET(sockfd, &readyfds))
+
+            if ( FD_ISSET(sockfd, &readyfds) )
             {
-                alp_error = alp_recvfrom(buff, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(other_host));
-                if (check_error(alp_error))
+
+                alp_error = alp_recvfrom( buff, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(other_host) );
+                if ( check_error(alp_error) )
                 {
+
                     return SEND_ROUTINE_RECVFROM_ERROR;
+
                 }
-                memcpy((void *)&inc_message, (void *)buff, ALP_MESSAGE_MAXSIZE);
-                if ((strcmp(saved_other_host.sa_data, other_host.sa_data)) == 0 && inc_message.header.acknowledge & ALP_BIN_ACK_FLAG) // Checking if address is the same as the one that was object of sending and checking for Ack flag
+
+
+                memcpy( (void *)&inc_message, (void *)buff, ALP_MESSAGE_MAXSIZE );
+                if ( (strcmp(saved_other_host.sa_data, other_host.sa_data)) == 0 && inc_message.header.acknowledge & ALP_BIN_ACK_FLAG ) // Checking if address is the same as the one that was object of sending and checking for Ack flag
                 {
-                    ack = ALP_ACKNOWLEDGED;
-                    continue;
+
+                    printf( "   ALP: Recived ACK message\n" );
+                    break;
+
                 }
             }
         }
 
         // Checking for timeout
-        gettimeofday(&dttv, NULL);
-        if (((dttv.tv_sec - sttv.tv_sec) >= ttv.tv_sec) && ((dttv.tv_usec - sttv.tv_usec) >= ttv.tv_usec))
+        gettimeofday( &dttv, NULL );
+        if ( ((dttv.tv_sec - sttv.tv_sec) >= ttv.tv_sec) && ((dttv.tv_usec - sttv.tv_usec) >= ttv.tv_usec) )
         {
-            alp_error = alp_sendto(&send_message, ALP_MESSAGE_MAXSIZE, &saved_other_host, sizeof(saved_other_host));
-            if (alp_error == SENDTO_ERROR) // Resending message in case of timeout
+
+            if ( resend_counter < 6 )
             {
-                return SEND_ROUTINE_RESEND_ERROR;
+
+                alp_error = alp_sendto( &send_message, ALP_MESSAGE_MAXSIZE, &saved_other_host, sizeof(saved_other_host) );
+                if ( alp_error == SENDTO_ERROR ) // Resending message in case of timeout
+                {
+                    return SEND_ROUTINE_RESEND_ERROR;
+                }
+
+
+                printf( "   ALP: Message resent\n" );
+
+
+                gettimeofday( &sttv, NULL ); // Reseting timer
+
+
+                resend_counter++;
+
             }
-            gettimeofday(&sttv, NULL); // Reseting timer
+            else
+            {
+
+                printf( "   ALP: Message resending timed out\n" );
+                printf( "   ALP: Server going back to Idle\n" );
+                break;
+
+            }
         }
     }
+
+
     return ALP_SUCCESS;
+
 }
 
-int alp_recv_routine(char *recv_message)
+int alp_recv_routine( char *recv_message )
 {
     // Initializations
     char test[PAYLOAD_SIZE];
@@ -246,72 +364,107 @@ int alp_recv_routine(char *recv_message)
     static char buff[ALP_MESSAGE_MAXSIZE];
     fd_set readfds, readyfds;
 
+
     // Preparing ack message
-    prepare_alp_message(NULL, &ack_message, ALP_ACK_OPERATION, 0);
+    prepare_alp_message( NULL, &ack_message, ALP_ACK_OPERATION, 0 );
+
 
     // Preperaing sets for select()
-    memset(&other_host, 0, sizeof(struct sockaddr));
-    memset(&recv_alp_message, 0, sizeof(struct alp_message));
-    FD_ZERO(&readfds);
-    FD_SET(sockfd, &readfds);
+    memset( &other_host, 0, sizeof(struct sockaddr) );
+    memset( &recv_alp_message, 0, sizeof(struct alp_message) );
+    FD_ZERO( &readfds );
+    FD_SET( sockfd, &readfds );
+
 
     readyfds = readfds;
-    x = select(1024, &readyfds, NULL, NULL, &stv);
-    if (x < 0)
+    x = select( 1024, &readyfds, NULL, NULL, &stv );
+    if ( x < 0 )
     {
+
         errno_save = errno;
         return RECV_ROUTINE_SELECT_ERROR;
+
     }
-    else if (x > 0)
+    else if ( x > 0 )
     {
-        if (FD_ISSET(sockfd, &readyfds))
+
+        if ( FD_ISSET( sockfd, &readyfds) )
         {
-            alp_error = alp_recvfrom(buff, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(struct sockaddr));
-            if (check_error(alp_error)) // If select() is ready reciving message and sending ack message
+
+            alp_error = alp_recvfrom( buff, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(struct sockaddr) );
+            if ( check_error(alp_error) ) // If select() is ready reciving message and sending ack message
             {
+
                 return RECV_ROUTINE_RECVFROM_ERROR;
+
+            }
+            
+
+            printf( "   ALP: Received Payload message\n" );
+
+
+            alp_error = alp_sendto( &ack_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(struct sockaddr) );
+            if ( check_error(alp_error) )
+            {
+
+                return RECV_ROUTINE_SENDTO_ERROR;
+
             }
 
-            alp_error = alp_sendto(&ack_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(struct sockaddr));
-            if (check_error(alp_error))
-            {
-                return RECV_ROUTINE_SENDTO_ERROR;
-            }
+
+            printf( "   ALP: ACK message sent\n" );
+
+
             // Converting chars for alp_message and memcpying to provided address
-            memcpy((void *)&recv_alp_message, (void *)buff, ALP_MESSAGE_MAXSIZE);
-            memcpy((void *)recv_message, (void *)&recv_alp_message.payload, PAYLOAD_SIZE);
+            memcpy( (void *)&recv_alp_message, (void *)buff, ALP_MESSAGE_MAXSIZE );
+            memcpy( (void *)recv_message, (void *)&recv_alp_message.payload, PAYLOAD_SIZE );
+
         }
     }
+
+
     return check_operation(recv_alp_message);
+
 }
 
-int alp_init(char *port)
+int alp_init( char *port )
 {
-    if (check_error(alp_create_sockfd(port)))
+
+    if ( check_error(alp_create_sockfd(port)) )
         return ALP_FAILED;
 
-    return ALP_SUCCESS;
-}
-int alp_send(char *message, int operation, int rdp_result)
-{
-    if (check_error(alp_send_routine(message, operation, rdp_result)))
-        return ALP_FAILED;
 
     return ALP_SUCCESS;
+
 }
-int alp_recv(char *recv_message, int *recv_operation)
+int alp_send( char *message, int operation, int rdp_result )
 {
-    alp_error = alp_recv_routine(recv_message);
-    if (check_error(alp_error))
+    if ( check_error(alp_send_routine(message, operation, rdp_result)) )
+        return ALP_FAILED;
+
+
+    return ALP_SUCCESS;
+
+}
+int alp_recv( char *recv_message, int *recv_operation )
+{
+
+    alp_error = alp_recv_routine( recv_message );
+    if ( check_error(alp_error) )
     {
         recv_operation = 0;
         return ALP_FAILED;
     }
     *recv_operation = alp_error;
+
+
     return ALP_SUCCESS;
+
 }
 int alp_exit()
 {
-    close(sockfd);
+
+    close( sockfd );
     return ALP_SUCCESS;
+
 }

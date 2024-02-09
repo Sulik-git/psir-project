@@ -17,83 +17,96 @@
 #define SEND_ROUTINE_RESEND_ERROR_MSG "ALP_ERROR: Send Routine - Resending failed\n"
 #define SOCKET_ALERADY_EXISTS_ERROR_MSG "ALP_ERROR: Socket already exists\n"
 #define ADDRINFO_SOCKET_CREATION_ERROR_MSG "ALP_ERROR: Addrinfo failed during creating socket\n"
+
+
 int alp_error = 0;
 int errno_save = 0;
 
-int check_error(int error)
+
+int check_error( int error )
 {
-    if (error < 0)
+
+    if ( error < 0 )
     {
-        switch (error)
+
+        switch ( error )
         {
+
         case GETTADDRINFO_ERROR:
-            printf(GETTADDRINFO_ERROR_MSG);
+            printf( GETTADDRINFO_ERROR_MSG );
             break;
+
         case SOCKET_ERROR:
-            printf(SOCKET_ERROR_MSG);
+            printf( SOCKET_ERROR_MSG );
             break;
 
         case BIND_ERROR:
-            printf(BIND_ERROR_MSG);
+            printf( BIND_ERROR_MSG );
             break;
 
         case SENDTO_ERROR:
-            printf(SENDTO_ERROR_MSG);
+            printf( SENDTO_ERROR_MSG );
             break;
 
         case RECVROM_ERROR:
-            printf(RECVROM_ERROR_MSG);
+            printf( RECVROM_ERROR_MSG );
             break;
 
         case SEND_ROUTINE_SELECT_ERROR:
-            printf(SEND_ROUTINE_SELECT_ERROR_MSG);
+            printf( SEND_ROUTINE_SELECT_ERROR_MSG );
             break;
 
         case RECV_ROUTINE_SELECT_ERROR:
-            printf(RECV_ROUTINE_SELECT_ERROR_MSG);
+            printf( RECV_ROUTINE_SELECT_ERROR_MSG );
             break;
 
         case RECV_ROUTINE_RECVFROM_ERROR:
-            printf(RECV_ROUTINE_RECVFROM_ERROR_MSG);
+            printf( RECV_ROUTINE_RECVFROM_ERROR_MSG );
             break;
 
         case RECV_ROUTINE_INIT_SOCKET_ERROR:
-            printf(RECV_ROUTINE_INIT_SOCKET_ERROR_MSG);
+            printf( RECV_ROUTINE_INIT_SOCKET_ERROR_MSG );
             break;
 
         case SEND_ROUTINE_GETADDRINFO_ERROR:
-            printf(SEND_ROUTINE_GETADDRINFO_ERROR_MSG);
+            printf( SEND_ROUTINE_GETADDRINFO_ERROR_MSG );
             break;
 
         case SEND_ROUTINE_RECVFROM_ERROR:
-            printf(SEND_ROUTINE_RECVFROM_ERROR_MSG);
+            printf( SEND_ROUTINE_RECVFROM_ERROR_MSG );
             break;
 
         case SEND_ROUTINE_INIT_SOCKET_ERROR:
-            printf(SEND_ROUTINE_INIT_SOCKET_ERROR_MSG);
+            printf( SEND_ROUTINE_INIT_SOCKET_ERROR_MSG );
             break;
 
         case SEND_ROUTINE_SENDFIRSTMSG_ERROR:
-            printf(SEND_ROUTINE_SENDFIRSTMSG_ERROR_MSG);
+            printf( SEND_ROUTINE_SENDFIRSTMSG_ERROR_MSG );
             break;
 
         case SEND_ROUTINE_RESEND_ERROR:
-            printf(SEND_ROUTINE_RESEND_ERROR_MSG);
+            printf( SEND_ROUTINE_RESEND_ERROR_MSG );
             break;
 
         case RECV_ROUTINE_SENDTO_ERROR:
-            printf(RECV_ROUTINE_SENDTO_ERROR_MSG);
+            printf( RECV_ROUTINE_SENDTO_ERROR_MSG );
             break;
 
         case SOCKET_ALERADY_EXISTS_ERROR:
-            printf(SOCKET_ALERADY_EXISTS_ERROR_MSG);
+            printf( SOCKET_ALERADY_EXISTS_ERROR_MSG );
             break;
 
         default:
             break;
+
         }
+
+
         fprintf(stderr, "ERRORNUM: %s\n", strerror(errno_save));
         return ALP_FAILED;
+
     }
+
     return ALP_SUCCESS;
+
 }

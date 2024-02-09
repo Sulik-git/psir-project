@@ -24,6 +24,10 @@
 #define RECV_ROUTINE_SENDTO_ERROR -29
 #define SOCKET_ALERADY_EXISTS_ERROR -30
 #define ADDRINFO_SOCKET_CREATION_ERROR -31
+
 extern int errno;
-int check_error(int error);
+
+
+int check_error( int error );
+
 #endif
