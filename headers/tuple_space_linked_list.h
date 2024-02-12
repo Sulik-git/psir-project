@@ -11,7 +11,7 @@ typedef struct tuple_list_node
 } tuple_list_node_t;
 
 void add_to_space( tuple_t data );
-void remove_from_space( tuple_t tuple_template, tuple_t *retrive_tuple );
+void remove_from_space( tuple_t tuple_template, tuple_t *retrive_tuple, int *inp_result );
 void retrive_from_space( tuple_t tuple_template, tuple_t *retrive_tuple, int *rdp_Result );
 
 #endif

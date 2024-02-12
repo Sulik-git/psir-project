@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "../headers/timer.h"
 
 #define TUPLE_LEN_CHECK_PHASE 0
 #define RESET_CHECK_PHASE 0
@@ -55,7 +56,8 @@ void add_to_space(tuple_t data)
 
 
         linked_list->next_tuple = n;
-        printf( "SERVER: Added tuple - name: %s ", n->tuple.name );
+        print_with_time( "" );
+        printf( "TUPLE_SPACE: Added tuple - name: %s ", n->tuple.name );
         print_tuple( n->tuple );
 
     }
@@ -64,7 +66,8 @@ void add_to_space(tuple_t data)
                                                                         //Goes here if linked list is empty
         head = n;
         head->next_tuple = NULL;
-        printf( "SERVER: Added tuple - name: %s ", n->tuple.name );
+        print_with_time( "" );
+        printf( "TUPLE_SPACE: Added tuple - name: %s ", n->tuple.name );
         print_tuple( n->tuple );
 
     }
@@ -190,15 +193,17 @@ int check_for_tuple( tuple_t template, tuple_t temp_tuple )
     }
 }
 
-void remove_from_space( tuple_t tuple_template, tuple_t *retrive_tuple )
+void remove_from_space( tuple_t tuple_template, tuple_t *retrive_tuple, int *inp_result )
 {
 
     int index = 0;
     *retrive_tuple = empty_tuple;
+    *inp_result = TS_FAILURE;
     if ( head == NULL )
     {
 
-        printf("SERVER ERROR: Cannot remove tuple because tuple space is empty\n");
+        printnl_with_time( "TUPLE_SPACE_ERROR: Cannot remove tuple because tuple space is empty" );
+        
         return;
 
     }
@@ -213,6 +218,7 @@ void remove_from_space( tuple_t tuple_template, tuple_t *retrive_tuple )
             {
 
                 *retrive_tuple = i->tuple;
+                *inp_result = TS_SUCCESS;
                 delete_at_index( index );
                 break;
 
@@ -228,13 +234,14 @@ void remove_from_space( tuple_t tuple_template, tuple_t *retrive_tuple )
     if( retrive_tuple->tuple_fields[0].is_actual == 0 )
     {
 
-        printf( "SERVER: Given tuple does not exist in tuple space\n" );
+        printnl_with_time( "TUPLE_SPACE: Given tuple does not exist in tuple space" );
+        printnl_with_time( "TUPLE_SPACE: Retrived empty tuple from Tuple Space" );
 
     }
     else
     {
 
-        printf( "SERVER: Removed tuple from Tuple Space\n" );
+        printnl_with_time( "TUPLE_SPACE: Removed tuple from Tuple Space" );
 
     }
 
@@ -244,10 +251,11 @@ void retrive_from_space( tuple_t tuple_template, tuple_t *retrive_tuple, int *rd
 {
 
     *retrive_tuple = empty_tuple;
+    *rdp_result = TS_FAILURE;
     if ( head == NULL )
     {
 
-        printf( "SERVER ERROR: Cannot retrive tuple because tuple space is empty\n" );
+        printnl_with_time( "TUPLE_SPACE_ERROR: Cannot retrive tuple because tuple space is empty" );
         return;
 
     }
@@ -273,13 +281,14 @@ void retrive_from_space( tuple_t tuple_template, tuple_t *retrive_tuple, int *rd
     if( retrive_tuple->tuple_fields[0].is_actual == 0 )
     {
 
-        printf( "SERVER: Retrived empty tuple from Tuple Space\n" );
+        printnl_with_time( "TUPLE_SPACE: Given tuple does not exist in tuple space" );
+        printnl_with_time( "TUPLE_SPACE: Retrived empty tuple from Tuple Space" );
 
     }
     else
     {
 
-        printf( "SERVER: Retrived tuple from Tuple Space\n" );
+        printnl_with_time( "TUPLE_SPACE: Retrived tuple from Tuple Space" );
 
     }
 

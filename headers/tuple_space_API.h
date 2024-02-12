@@ -14,7 +14,7 @@
 #define TS_INP 3
 
 #define NAME_MAX_SIZE 16
-#define TUPLE_MAX_SIZE 2
+#define TUPLE_MAX_SIZE 2 
 
 typedef struct
 {
@@ -46,7 +46,7 @@ void tuple_to_char( tuple_t *tuple, char *str );
 
 
 void ts_out( tuple_t tuple );                                             // Adds tuple to tuple_space
-void ts_inp( tuple_t template, tuple_t *retrive_tuple );                  // Retrives tuple from tuple_space without getting return value
+void ts_inp( tuple_t template, tuple_t *retrive_tuple, int *inp_result );                  // Retrives tuple from tuple_space without getting return value
 void ts_rdp( tuple_t template, tuple_t *retrive_tuple, int *rdp_result ); /* Retrives tuple from tuple_space, doesnt remove it and gets return value
                                                                              of success or failure*/
 

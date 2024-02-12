@@ -1,5 +1,5 @@
 #include "../headers/application_layer_protocol.h"
-
+#include "../headers/timer.h"
 
 extern int alp_error;
 extern int errno_save;
@@ -9,17 +9,7 @@ static struct sockaddr other_host;
 
 
 /* TODO:
-        - Need to modify protocol
-        - Add char* to struct alp_message translation to properly abstract
-        - Char to alp_message convertion
-
-            Opt:
-            - Not sure how full bit field alp message will work, HAVE IN MIND
-            - Add special functions for preparing diffrent type of msgs
-            - Repair message size 132 -> 130. why 132?
-            - Better ack msg checking using
-            - Add "Lost Connection" timeout
- */
+*/
 
 // Getting address info
 int alp_getaddrinfo( char *ip, char *port, struct addrinfo *alp_addrinfo )
@@ -148,15 +138,14 @@ int prepare_alp_message( char *message, struct alp_message *msg_to_prepare, int 
 
         if ( rdp_flag )
         {
-            msg_to_prepare->header.rdp_result = ALP_BIN_RDP_YES_FLAG;
+            msg_to_prepare->header.op_result = ALP_BIN_OP_YES_FLAG;
         }
         else
         {
-            msg_to_prepare->header.rdp_result = ALP_BIN_RDP_NO_FLAG;
+            msg_to_prepare->header.op_result = ALP_BIN_OP_NO_FLAG;
         }
 
 
-        msg_to_prepare->header.sequence_number = 0b0;
         memcpy( (void *)&msg_to_prepare->payload, (void *)message, PAYLOAD_SIZE );
 
     }
@@ -166,6 +155,17 @@ int prepare_alp_message( char *message, struct alp_message *msg_to_prepare, int 
         memset( msg_to_prepare, 0, sizeof(struct alp_message) );
         msg_to_prepare->header.payload_type = ALP_BIN_INP_PAYLOAD;
         msg_to_prepare->header.sequence_number = 0b0;
+
+        if ( rdp_flag )
+        {
+            msg_to_prepare->header.op_result = ALP_BIN_OP_YES_FLAG;
+        }
+        else
+        {
+            msg_to_prepare->header.op_result = ALP_BIN_OP_NO_FLAG;
+        }
+
+
         memcpy( (void *)&msg_to_prepare->payload, (void *)message, PAYLOAD_SIZE );
 
     }
@@ -264,7 +264,7 @@ int alp_send_routine( char *message, int operation, int rdp_result )
         return SEND_ROUTINE_SENDFIRSTMSG_ERROR;
 
     }
-    printf( "   ALP: Payload message sent\n" );
+    printnl_with_time( "ALP: Payload message sent" );
     saved_other_host = other_host;
     gettimeofday( &sttv, NULL );
 
@@ -305,7 +305,7 @@ int alp_send_routine( char *message, int operation, int rdp_result )
                 if ( (strcmp(saved_other_host.sa_data, other_host.sa_data)) == 0 && inc_message.header.acknowledge & ALP_BIN_ACK_FLAG ) // Checking if address is the same as the one that was object of sending and checking for Ack flag
                 {
 
-                    printf( "   ALP: Recived ACK message\n" );
+                    printnl_with_time( "ALP: Recived ACK message" );
                     break;
 
                 }
@@ -327,7 +327,7 @@ int alp_send_routine( char *message, int operation, int rdp_result )
                 }
 
 
-                printf( "   ALP: Message resent\n" );
+                printnl_with_time( "ALP: Message resent" );
 
 
                 gettimeofday( &sttv, NULL ); // Reseting timer
@@ -339,8 +339,8 @@ int alp_send_routine( char *message, int operation, int rdp_result )
             else
             {
 
-                printf( "   ALP: Message resending timed out\n" );
-                printf( "   ALP: Server going back to Idle\n" );
+                printnl_with_time( "ALP: Message resending timed out" );
+                printnl_with_time( "ALP: Server going back to Idle" );
                 break;
 
             }
@@ -400,7 +400,7 @@ int alp_recv_routine( char *recv_message )
             }
             
 
-            printf( "   ALP: Received Payload message\n" );
+            printnl_with_time( "ALP: Received Payload message" );
 
 
             alp_error = alp_sendto( &ack_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(struct sockaddr) );
@@ -412,7 +412,7 @@ int alp_recv_routine( char *recv_message )
             }
 
 
-            printf( "   ALP: ACK message sent\n" );
+            printnl_with_time( "ALP: ACK message sent" );
 
 
             // Converting chars for alp_message and memcpying to provided address

@@ -29,8 +29,8 @@
 #define TIMEOUT_MILISEC 1000
 #define FIELDS_NUM 2
 #define N 5
-#define ID 1
-
+#define ID 2
+#define __bin_to_number(x) ( (x & 0b10000000000000) >> 13 )
 
 typedef struct
 {
@@ -99,23 +99,23 @@ byte mac[] = {
 };
 
 
-ZsutIPAddress server_ip=ZsutIPAddress(192,168,56,104);
+ZsutIPAddress server_ip=ZsutIPAddress( 192, 168, 56, 104 );
 ZsutEthernetUDP Udp;
 
 
-tuple_t check_for_prime[N];
-tuple_t template_prime;
-tuple_t template_not_prime;
-tuple_t result[N];
+tuple_t tuple_change;
 int op_result;
-int counter;
+int old_sensor_value;
+int sensor_value;
+
 
 void setup() 
 {
 
-  char str_check_for_prime[] = "check_if_prime";
-  char str_prime[] = "is_prime";
-  char str_not_prime[] = "is_not_prime";
+  char str_tuple_changed[] = "change_tuple";
+
+
+  ZsutPinMode( ZSUT_PIN_D13, INPUT ); 
 
 
   Serial.begin( 9600 );
@@ -124,137 +124,52 @@ void setup()
   alp_init( mac, LOCAL_PORT );
 
 
-  //Preparing check_for_prime tuples
-  for(int s = 0; s < N; s++)
-  {
+  //Preparing tuple with change 0->1 
+  memcpy( (void *)tuple_change.name, (void *)str_tuple_changed, strlen(str_tuple_changed) );
+  tuple_change.tuple_len = FIELDS_NUM;
+  tuple_change.tuple_fields[0].is_actual = TS_YES;
+  tuple_change.tuple_fields[0].type = TS_INT;
+  tuple_change.tuple_fields[0].data.int_field = ID;
+  tuple_change.tuple_fields[1].is_actual = TS_YES;
+  tuple_change.tuple_fields[1].type = TS_INT;
 
-    memcpy( (void *)check_for_prime[s].name, (void *)str_check_for_prime, strlen(str_check_for_prime) );
-    check_for_prime[s].tuple_len = FIELDS_NUM;
-    check_for_prime[s].tuple_fields[0].is_actual = TS_YES;
-    check_for_prime[s].tuple_fields[0].type = TS_INT;
-    check_for_prime[s].tuple_fields[0].data.int_field = ID;
-    check_for_prime[s].tuple_fields[1].is_actual = TS_YES;
-    check_for_prime[s].tuple_fields[1].type = TS_INT;
-    check_for_prime[s].tuple_fields[1].data.int_field = 2 + s;
+
+  old_sensor_value = ZsutDigitalRead(); // Implement sensing app
   
-  }
-  
-
-  //Preparing is_prime template
-  memcpy( (void *)template_prime.name, (void *)str_prime, strlen(str_prime) );
-  template_prime.tuple_len = FIELDS_NUM;
-  template_prime.tuple_fields[0].is_actual = TS_YES;
-  template_prime.tuple_fields[0].type = TS_INT;
-  template_prime.tuple_fields[0].data.int_field = ID;
-  template_prime.tuple_fields[1].is_actual = TS_NO;
-
-
-  //Preparing is_not_prime template
-  memcpy( (void *)template_not_prime.name, (void *)str_not_prime, strlen(str_not_prime) );
-  template_not_prime.tuple_len = FIELDS_NUM;
-  template_not_prime.tuple_fields[0].is_actual = TS_YES;
-  template_not_prime.tuple_fields[0].type = TS_INT;
-  template_not_prime.tuple_fields[0].data.int_field = ID;
-  template_not_prime.tuple_fields[1].is_actual = TS_NO;
 
 }
+
 
 void loop() 
 {
 
-  delay( 1000 );
-  Serial.print( "--OUT_PHASE--\n\n" );
-  delay( 1000 );
+  delay(2000);
 
 
-  // Outing tuples for checking if prime
-  for( size_t s = 0; s < N; s++ )
+  Serial.print("\n--SENSOR_CYCLE--\n");
+  Serial.print("Sensing...\n");
+
+
+  sensor_value = __bin_to_number(ZsutDigitalRead());  // Implement sensing app
+  //Serial.print( sensor_value, BIN );
+  //Serial.print( " \n " );
+  if( sensor_value != old_sensor_value )
   {
 
-    ts_out( check_for_prime[s] );
-    Serial.print( "Tuple with number " );
-    Serial.print( check_for_prime[s].tuple_fields[1].data.int_field );
-    Serial.print( " is out!!!\n\n");
-    delay( 1000 );
-  
-  }
+    Serial.print( "Change sensed!!!\n" );
 
 
-  delay( 1000 );
-  Serial.print( "\n" );
-  Serial.print( "--GETTING_RESULTS_PHASE--\n\n" );
-  delay( 1000 );
+    tuple_change.tuple_fields[1].data.int_field = sensor_value;
+    ts_out( tuple_change );
 
 
-  // Removing results from tuple space
-  while( 1 )
-  {
-    
-    Serial.print( "Trying to remove tuple \"is_prime\" \n" );
-    result[counter] = ts_inp( template_prime, &op_result );
-    if ( op_result )  
-    {
-
-      Serial.print( "Removed tuple from TS\n" );
-      counter++;
-      
-    
-    }
-    Serial.print( "\n" );
-
-
-    if ( counter == N )
-        break;
-
-
-    delay(1000);
-
-
-    Serial.print( "Trying to remove tuple \"is_not_prime\" \n" );
-    result[counter] = ts_inp( template_not_prime, &op_result );
-    if ( op_result )  
-    {
-     
-      Serial.print( "Removed tuple from TS\n" );
-      counter++;
-      
-   
-    }
-    Serial.print( "\n" );
-
-
-    if ( counter == N )
-        break;
-
-
-    delay( 1000 );
+    Serial.print("Change tuple OUT!!!\n");
 
   }
 
 
-  counter = 0;
+  old_sensor_value = sensor_value;
 
-
-  delay( 1000 );
-
-
-  // Printing results
-  Serial.print( "\n" );
-  Serial.print( "--PRINTING_RESULTS_PHASE--\n\n" );
-  delay( 1000 );
-  for( size_t s = 0; s < N; s++ )
-  {
-
-    Serial.print( "Number: " );
-    Serial.print( result[s].tuple_fields[1].data.int_field );
-    Serial.print( " - " );
-    Serial.print( result[s].name );
-    Serial.print( "\n\n" );
-    delay( 1000 );
-  }
-
-  Serial.print( "\n" );
-  delay( 5000 );
 
 }
 
@@ -280,6 +195,7 @@ void alp_init( byte *mac, int local_port )
 
 void alp_send( unsigned char *message, int operation )
 {
+  
   struct alp_message msg;
   unsigned char send_buff[ALP_MESSAGE_MAXSIZE] = {0}; 
   unsigned char recv_buff[ALP_MESSAGE_MAXSIZE] = {0};

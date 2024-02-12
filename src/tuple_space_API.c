@@ -124,10 +124,10 @@ void ts_out( tuple_t tuple )
 
 }
 
-void ts_inp( tuple_t template, tuple_t *retrive_tuple )
+void ts_inp( tuple_t template, tuple_t *retrive_tuple, int *inp_result )
 {
 
-    remove_from_space( template, retrive_tuple ); 
+    remove_from_space( template, retrive_tuple, inp_result ); 
 
 }
 

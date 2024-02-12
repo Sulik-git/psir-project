@@ -27,30 +27,26 @@
 #define TS_FAILURE 0
 #define PAYLOAD_NONCHARS_SIZE 36
 #define TIMEOUT_MILISEC 1000
-#define FIELDS_NUM 2
-#define N 5
-#define ID 1
 
 
 typedef struct
 {
-    int32_t is_actual;
-    int32_t type;
+    long is_actual;
+    long type;
     union
     {
-        int32_t int_field;
+        long int_field;
         float float_field;
     } data;
-    int32_t padding;
+    long padding;
     
 } field_t;
-
 
 
 typedef struct
 {
     char name[NAME_MAX_SIZE];
-    int32_t tuple_len;
+    long tuple_len;
     field_t tuple_fields[TUPLE_MAX_SIZE];
 
 } tuple_t ; //52B
@@ -60,16 +56,16 @@ void char_to_tuple( char *str, tuple_t *tuple );
 void tuple_to_char( tuple_t *tuple, char *str );
 
 
-void ts_out( tuple_t tuple );                            // Adds tuple to tuple_space
-tuple_t ts_inp( tuple_t template_inp, int *inp_result ); // Retrives tuple from tuple_space without getting return value
-tuple_t ts_rdp( tuple_t template_rdp, int *rdp_result );
+void ts_out( tuple_t tuple );                                   // Adds tuple to tuple_space
+tuple_t ts_inp( tuple_t template_inp ); // Retrives tuple from tuple_space without getting return value
+tuple_t ts_rdp( tuple_t template_rdp);
 
 
 struct alp_header
 {
     uint8_t payload_type : 2;
     uint16_t sequence_number : 12;
-    uint8_t op_result : 1;
+    uint8_t rdp_result : 1;
     uint8_t acknowledge : 1;
 };
 
@@ -91,7 +87,7 @@ void reverse_chars( char *chars_to_reverse, int chars_num );
 void prepare_alp_message( unsigned char *message, struct alp_message *msg_to_send, int operation );
 void alp_init( byte *mac, int local_port );
 void alp_send( unsigned char *message, int operation );
-int alp_recv( unsigned char *recv_message, int* op_result );
+int alp_recv( unsigned char *recv_message, int* rdp_result );
 
 
 byte mac[] = {
@@ -103,177 +99,138 @@ ZsutIPAddress server_ip=ZsutIPAddress(192,168,56,104);
 ZsutEthernetUDP Udp;
 
 
-tuple_t check_for_prime[N];
-tuple_t template_prime;
-tuple_t template_not_prime;
-tuple_t result[N];
-int op_result;
-int counter;
+tuple_t test;
+tuple_t rdp_test_tuple;
+
+
+char rdp_test_msg[128];
+
 
 void setup() 
 {
-
-  char str_check_for_prime[] = "check_if_prime";
-  char str_prime[] = "is_prime";
-  char str_not_prime[] = "is_not_prime";
+  char str[] = "test";
 
 
   Serial.begin( 9600 );
   
   
   alp_init( mac, LOCAL_PORT );
-
-
-  //Preparing check_for_prime tuples
-  for(int s = 0; s < N; s++)
-  {
-
-    memcpy( (void *)check_for_prime[s].name, (void *)str_check_for_prime, strlen(str_check_for_prime) );
-    check_for_prime[s].tuple_len = FIELDS_NUM;
-    check_for_prime[s].tuple_fields[0].is_actual = TS_YES;
-    check_for_prime[s].tuple_fields[0].type = TS_INT;
-    check_for_prime[s].tuple_fields[0].data.int_field = ID;
-    check_for_prime[s].tuple_fields[1].is_actual = TS_YES;
-    check_for_prime[s].tuple_fields[1].type = TS_INT;
-    check_for_prime[s].tuple_fields[1].data.int_field = 2 + s;
   
-  }
   
-
-  //Preparing is_prime template
-  memcpy( (void *)template_prime.name, (void *)str_prime, strlen(str_prime) );
-  template_prime.tuple_len = FIELDS_NUM;
-  template_prime.tuple_fields[0].is_actual = TS_YES;
-  template_prime.tuple_fields[0].type = TS_INT;
-  template_prime.tuple_fields[0].data.int_field = ID;
-  template_prime.tuple_fields[1].is_actual = TS_NO;
+  memcpy( (void *)test.name, (void *)str, sizeof(str) );
 
 
-  //Preparing is_not_prime template
-  memcpy( (void *)template_not_prime.name, (void *)str_not_prime, strlen(str_not_prime) );
-  template_not_prime.tuple_len = FIELDS_NUM;
-  template_not_prime.tuple_fields[0].is_actual = TS_YES;
-  template_not_prime.tuple_fields[0].type = TS_INT;
-  template_not_prime.tuple_fields[0].data.int_field = ID;
-  template_not_prime.tuple_fields[1].is_actual = TS_NO;
+  test.tuple_fields[0].is_actual = 1;
+  test.tuple_fields[0].type = TS_INT;
+  test.tuple_fields[0].data.int_field = 5;
+  test.tuple_fields[0].padding = 0;
+  test.tuple_fields[1].is_actual = 1;
+  test.tuple_fields[1].type = TS_INT;
+  test.tuple_fields[1].data.int_field = 20;
+  test.tuple_fields[1].padding = 0;
+  test.tuple_len = 2;
 
 }
 
 void loop() 
 {
 
+  Serial.print( "\n" );
+  Serial.print( "Tuple Out\n" );
+  ts_out( test );
+
+
   delay( 1000 );
-  Serial.print( "--OUT_PHASE--\n\n" );
-  delay( 1000 );
 
 
-  // Outing tuples for checking if prime
-  for( size_t s = 0; s < N; s++ )
-  {
+  Serial.print( "\n" );
+  Serial.print( "Tuple Rdp\n" );
+  rdp_test_tuple = ts_rdp( test );
 
-    ts_out( check_for_prime[s] );
-    Serial.print( "Tuple with number " );
-    Serial.print( check_for_prime[s].tuple_fields[1].data.int_field );
-    Serial.print( " is out!!!\n\n");
-    delay( 1000 );
+
+  Serial.print( "Received tuple named from RDP: " );
+  Serial.print( rdp_test_tuple.name );
+  Serial.print( " with field1: " );
+  Serial.print( rdp_test_tuple.tuple_fields[0].data.int_field );
+  Serial.print( " with field2: " );
+  Serial.print( rdp_test_tuple.tuple_fields[1].data.int_field );
+  Serial.print( "\n" );
   
-  }
-
-
-  delay( 1000 );
-  Serial.print( "\n" );
-  Serial.print( "--GETTING_RESULTS_PHASE--\n\n" );
-  delay( 1000 );
-
-
-  // Removing results from tuple space
-  while( 1 )
-  {
-    
-    Serial.print( "Trying to remove tuple \"is_prime\" \n" );
-    result[counter] = ts_inp( template_prime, &op_result );
-    if ( op_result )  
-    {
-
-      Serial.print( "Removed tuple from TS\n" );
-      counter++;
-      
-    
-    }
-    Serial.print( "\n" );
-
-
-    if ( counter == N )
-        break;
-
-
-    delay(1000);
-
-
-    Serial.print( "Trying to remove tuple \"is_not_prime\" \n" );
-    result[counter] = ts_inp( template_not_prime, &op_result );
-    if ( op_result )  
-    {
-     
-      Serial.print( "Removed tuple from TS\n" );
-      counter++;
-      
-   
-    }
-    Serial.print( "\n" );
-
-
-    if ( counter == N )
-        break;
-
-
-    delay( 1000 );
-
-  }
-
-
-  counter = 0;
-
 
   delay( 1000 );
 
-
-  // Printing results
-  Serial.print( "\n" );
-  Serial.print( "--PRINTING_RESULTS_PHASE--\n\n" );
-  delay( 1000 );
-  for( size_t s = 0; s < N; s++ )
-  {
-
-    Serial.print( "Number: " );
-    Serial.print( result[s].tuple_fields[1].data.int_field );
-    Serial.print( " - " );
-    Serial.print( result[s].name );
-    Serial.print( "\n\n" );
-    delay( 1000 );
-  }
 
   Serial.print( "\n" );
+  Serial.print( "Tuple Inp\n" );
+  rdp_test_tuple = ts_inp( test );
+
+
+  Serial.print( "Received tuple named from INP: " );
+  Serial.print( rdp_test_tuple.name );
+  Serial.print( " with field1: " );
+  Serial.print( rdp_test_tuple.tuple_fields[0].data.int_field );
+  Serial.print( " with field2: " );
+  Serial.print( rdp_test_tuple.tuple_fields[1].data.int_field );
+  Serial.print( "\n" );
+
+
+  delay( 1000 );
+
+
+  Serial.print( "\n" );
+  Serial.print( "Tuple Inp\n" );
+  rdp_test_tuple = ts_inp( test );
+
+
+  Serial.print( "Received tuple named from INP: " );
+  Serial.print( rdp_test_tuple.name );
+  Serial.print( " with field1: " );
+  Serial.print( rdp_test_tuple.tuple_fields[0].data.int_field );
+  Serial.print( " with field2: " );
+  Serial.print( rdp_test_tuple.tuple_fields[1].data.int_field );
+  Serial.print( "\n" );
+
+
   delay( 5000 );
 
 }
 
+void reverse_chars(char *chars_to_reverse, int chars_num)
+{
+
+    for (int i = 0; i < chars_num / 2; i++)
+    {
+
+        char buff = '\0';
 
 
+        buff = chars_to_reverse[chars_num - 1 - i];
+        chars_to_reverse[chars_num - 1 - i] = chars_to_reverse[i];
+        chars_to_reverse[i] = buff;
+
+    }
+
+}
+
+void reverse_nonchars_vars(char *payload)
+{
+
+    int i = 16;
 
 
+    for( i; i < 116; i = i + 4 )
+    {
+        reverse_chars( payload + i, sizeof(int) );
+    }
 
-
-
-
-// ALP SECTION
+}
 
 void alp_init( byte *mac, int local_port )
 {
 
     ZsutEthernet.begin( mac );
     Serial.print( ZsutEthernet.localIP() );
-    Serial.print( "\n\n" );
+    Serial.print( "\n" );
     Udp.begin( local_port );
 
 }
@@ -287,10 +244,10 @@ void alp_send( unsigned char *message, int operation )
   int stop_time = 0;
   int packetSize = 0;
 
-  //Serial.print( "ALP: Preparing ALP message...\n" );
+  Serial.print( "ALP: Preparing ALP message...\n" );
   prepare_alp_message( message, &msg, operation );
   memcpy( (void *)send_buff, (void *)&msg, ALP_MESSAGE_MAXSIZE ); 
-  //Serial.print( "ALP: Message prepared\n" );
+  Serial.print( "ALP: Message prepared\n" );
 
   start_time = ZsutMillis();
 
@@ -300,7 +257,7 @@ void alp_send( unsigned char *message, int operation )
   Udp.endPacket();
 
 
-  //Serial.print( "ALP: Sent Payload message - waiting for ACK\n" );
+  Serial.print("ALP: Sent Payload message - waiting for ACK\n");
   
 
   while( 1 )
@@ -317,7 +274,7 @@ void alp_send( unsigned char *message, int operation )
       if( msg.header.acknowledge & ALP_BIN_ACK_FLAG )
       {
 
-        //Serial.print("ALP: Received Ack\n");
+        Serial.print("ALP: Received Ack\n");
         break;
 
       }
@@ -334,7 +291,7 @@ void alp_send( unsigned char *message, int operation )
         Udp.endPacket();
 
 
-        //Serial.print("ALP: Resent Payload message\n");
+        Serial.print("ALP: Resent Payload message\n");
 
 
         start_time = ZsutMillis();
@@ -344,7 +301,7 @@ void alp_send( unsigned char *message, int operation )
   }
 }
 
-int alp_recv( unsigned char *recv_message, int *op_result )
+int alp_recv( unsigned char *recv_message, int *rdp_result )
 {
 
   struct alp_message msg;
@@ -386,8 +343,7 @@ int alp_recv( unsigned char *recv_message, int *op_result )
   //Serial.print( "\n" );
 
 
-  memcpy( (void *)&msg, (void *)recv_buffor, ALP_MESSAGE_MAXSIZE );
-  *op_result = msg.header.op_result;
+  memcpy( (void *)&msg, (void *)recv_buffor, ALP_MESSAGE_MAXSIZE );  
   memcpy( (void *)recv_message, (void *)&msg.payload, PAYLOAD_SIZE );
   
   
@@ -489,10 +445,11 @@ void ts_out( tuple_t tuple )
 
 }
 
-tuple_t ts_inp( tuple_t template_inp, int *inp_result )
+tuple_t ts_inp( tuple_t template_inp )
 {
 
   unsigned char buffer[PAYLOAD_SIZE] = {0};
+  int rdp_result = 0;
   tuple_t recv_tuple;
  
 
@@ -503,7 +460,7 @@ tuple_t ts_inp( tuple_t template_inp, int *inp_result )
   memset( buffer, 0, PAYLOAD_SIZE );
  
   
-  int r = alp_recv( buffer, inp_result );
+  int r = alp_recv( buffer, &rdp_result );
    
      
   char_to_tuple( buffer, &recv_tuple );
@@ -511,10 +468,11 @@ tuple_t ts_inp( tuple_t template_inp, int *inp_result )
                             
 }
 
-tuple_t ts_rdp( tuple_t template_rdp, int *rdp_result )
+tuple_t ts_rdp( tuple_t template_rdp )
 {
 
   unsigned char buffer[PAYLOAD_SIZE] = {0};
+  int rdp_result = 0;
   tuple_t recv_tuple;
  
 
@@ -525,7 +483,7 @@ tuple_t ts_rdp( tuple_t template_rdp, int *rdp_result )
   memset( buffer, 0, PAYLOAD_SIZE );
  
   
-  int r = alp_recv( buffer, rdp_result );
+  int r = alp_recv( buffer, &rdp_result );
    
      
   char_to_tuple( buffer, &recv_tuple );

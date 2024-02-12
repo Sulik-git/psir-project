@@ -18,8 +18,8 @@
 #define ALP_ACKNOWLEDGED 1
 #define ALP_NOT_ACKNOWLEDGED 0
 #define ALP_BIN_ACK_FLAG 0b1
-#define ALP_BIN_RDP_YES_FLAG 0b1
-#define ALP_BIN_RDP_NO_FLAG 0b0
+#define ALP_BIN_OP_YES_FLAG 0b1
+#define ALP_BIN_OP_NO_FLAG 0b0
 #define ALP_BIN_ACK_PAYLOAD 0b00
 #define ALP_BIN_OUT_PAYLOAD 0b01
 #define ALP_BIN_RDP_PAYLOAD 0b10
@@ -39,7 +39,7 @@ struct alp_header
 
     uint8_t payload_type : 2;
     uint16_t sequence_number : 12;
-    uint8_t rdp_result : 1;
+    uint8_t op_result : 1;
     uint8_t acknowledge : 1;
 
 };
@@ -60,7 +60,7 @@ struct alp_message
 };
 
 int alp_init( char *port );
-int alp_send( char *message, int operation, int rdp_result );
+int alp_send( char *message, int operation, int op_result );
 int alp_recv( char *recv_message, int *operation );
 int alp_exit();
 #endif

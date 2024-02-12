@@ -67,7 +67,7 @@ struct alp_header
 {
     uint8_t payload_type : 2;
     uint16_t sequence_number : 12;
-    uint8_t rdp_result : 1;
+    uint8_t op_result : 1;
     uint8_t acknowledge : 1;
 };
 
@@ -107,6 +107,7 @@ tuple_t check_if_prime_template;
 tuple_t result;
 char str_result_prime[] = "is_prime";
 char str_result_not_prime[] = "is_not_prime";
+int op_result;
 
 
 void setup() 
@@ -137,8 +138,8 @@ void loop()
   Serial.print( "Trying to remove tuple \"check_if_prime\" \n" );
 
 
-  result = ts_inp( check_if_prime_template );
-  if ( result.tuple_fields[1].data.int_field != 0 )
+  result = ts_inp( check_if_prime_template, &op_result );
+  if ( op_result )
   {
     Serial.print( "Tuple removed\n\n");
     Serial.print( "Checking if number is prime...\n" );
@@ -320,7 +321,7 @@ void alp_send( unsigned char *message, int operation )
   }
 }
 
-int alp_recv( unsigned char *recv_message, int *rdp_result )
+int alp_recv( unsigned char *recv_message, int *op_result )
 {
 
   struct alp_message msg;
@@ -362,7 +363,8 @@ int alp_recv( unsigned char *recv_message, int *rdp_result )
   //Serial.print( "\n" );
 
 
-  memcpy( (void *)&msg, (void *)recv_buffor, ALP_MESSAGE_MAXSIZE );  
+  memcpy( (void *)&msg, (void *)recv_buffor, ALP_MESSAGE_MAXSIZE );
+  *op_result = msg.header.op_result;  
   memcpy( (void *)recv_message, (void *)&msg.payload, PAYLOAD_SIZE );
   
   
@@ -464,11 +466,10 @@ void ts_out( tuple_t tuple )
 
 }
 
-tuple_t ts_inp( tuple_t template_inp )
+tuple_t ts_inp( tuple_t template_inp, int *op_result )
 {
 
   unsigned char buffer[PAYLOAD_SIZE] = {0};
-  int rdp_result = 0;
   tuple_t recv_tuple;
  
 
@@ -479,7 +480,7 @@ tuple_t ts_inp( tuple_t template_inp )
   memset( buffer, 0, PAYLOAD_SIZE );
  
   
-  int r = alp_recv( buffer, &rdp_result );
+  int r = alp_recv( buffer, op_result );
    
      
   char_to_tuple( buffer, &recv_tuple );
@@ -487,11 +488,10 @@ tuple_t ts_inp( tuple_t template_inp )
                             
 }
 
-tuple_t ts_rdp( tuple_t template_rdp )
+tuple_t ts_rdp( tuple_t template_rdp, int *op_result )
 {
 
   unsigned char buffer[PAYLOAD_SIZE] = {0};
-  int rdp_result = 0;
   tuple_t recv_tuple;
  
 
@@ -502,7 +502,7 @@ tuple_t ts_rdp( tuple_t template_rdp )
   memset( buffer, 0, PAYLOAD_SIZE );
  
   
-  int r = alp_recv( buffer, &rdp_result );
+  int r = alp_recv( buffer, op_result );
    
      
   char_to_tuple( buffer, &recv_tuple );
