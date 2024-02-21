@@ -37,19 +37,19 @@ extern int alp_error;
 struct alp_header
 {
 
-    uint8_t payload_type : 2;
-    uint16_t sequence_number : 12;
-    uint8_t op_result : 1;
-    uint8_t acknowledge : 1;
+    uint8_t payload_type : 2;            // Payload type : 00 - ack, 01 - out, 10 - rdp, 11 - inp
+    uint16_t sequence_number : 12;       // Sequence number - NOT IMPLEMENTED
+    uint8_t op_result : 1;               // Inp and rdp operation result (1 if tuple retrived, 0 if tuple not retrived)
+    uint8_t acknowledge : 1;             // 1 if message is acknowledge
 
-};
+};                              // Application layer protocol message header
 
 struct alp_payload
 {
 
     uint8_t block : 8;
 
-};
+};                                      // Struct with 8 bits of payload
 
 struct alp_message
 {
@@ -57,10 +57,10 @@ struct alp_message
     struct alp_header header;
     struct alp_payload payload[PAYLOAD_SIZE];
 
-};
+};                                      // Alp message struct 
 
-int alp_init( char *port );
-int alp_send( char *message, int operation, int op_result );
-int alp_recv( char *recv_message, int *operation );
-int alp_exit();
+int alp_init( char *port );                                     // Initializes socket
+int alp_send( char *message, int operation, int op_result );    // Sends alp message
+int alp_recv( char *recv_message, int *operation );             // Receives alp message
+int alp_exit();                                                 // Freeing memory
 #endif

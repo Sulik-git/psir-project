@@ -27,8 +27,6 @@
 #define TS_FAILURE 0
 #define PAYLOAD_NONCHARS_SIZE 36
 #define TIMEOUT_MILISEC 1000
-#define FIELDS_NUM 2
-#define ID 2
 
 
 typedef struct
@@ -82,7 +80,7 @@ void tuple_to_char( tuple_t *_tuple, char *_str );    // Changes given tuple str
 
 void ts_out( tuple_t _tuple );                            // Adds tuple to tuple_space
 tuple_t ts_inp( tuple_t _template_inp, int *_inp_result ); // Retrives tuple from tuple_space with getting return value and removes it
-tuple_t ts_rdp( tuple_t _template_rdp, int *_rdp_result ); // Retrives tuple from tuple_space with getting return value
+tuple_t ts_rdp( tuple_t _template_rdp, int *_rdp_result ); // Retrives tuple from tuple_space with getting return value 
 
 
 struct alp_header                                     // ALP header struct
@@ -113,10 +111,10 @@ void alp_init( byte *mac, int local_port );                                     
 
 void alp_send( unsigned char *payload, int operation );                                                         // Sends alp message with given payload
 
-int alp_recv( unsigned char *recv_payload, int *op_result );                                                   // Receives alp message, puts received payload to given buffer and sets operation result
+int alp_recv( unsigned char *recv_payload, int *op_result );  
 
 
-byte mac[] = {                                                                                                  // Arduino MAC
+byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
 
@@ -124,89 +122,104 @@ byte mac[] = {                                                                  
 ZsutIPAddress server_ip=ZsutIPAddress(192,168,56,104);
 ZsutEthernetUDP Udp;
 
+int operation_result;
+tuple_t test;
+tuple_t test_tuple;
 
 
-tuple_t template_change;
-tuple_t result;
-int op_result;
-int counter_1;
-int counter_0;
-int time_counter;
+char rdp_test_msg[128];
 
 
 void setup() 
 {
-
-  char str_tuple_changed[] = "change_tuple";
-
+  char str[] = "test";
 
 
   Serial.begin( 9600 );
   
   
   alp_init( mac, LOCAL_PORT );
+  
+  
+  memcpy( (void *)test.name, (void *)str, sizeof(str) );
 
-
-  //Preparing "change_tuple" template
-  memcpy( (void *)template_change.name, (void *)str_tuple_changed, strlen(str_tuple_changed) );
-  template_change.fields_num = FIELDS_NUM;
-  template_change.tuple_fields[0].is_actual = TS_YES;
-  template_change.tuple_fields[0].type = TS_INT;
-  template_change.tuple_fields[0].data.int_field = ID;
-  template_change.tuple_fields[1].is_actual = TS_NO;
+  // Preparing test tuple to for sending
+  test.tuple_fields[0].is_actual = 1;
+  test.tuple_fields[0].type = TS_INT;
+  test.tuple_fields[0].data.int_field = 5;
+  test.tuple_fields[0].padding = 0;
+  test.tuple_fields[1].is_actual = 1;
+  test.tuple_fields[1].type = TS_INT;
+  test.tuple_fields[1].data.int_field = 20;
+  test.tuple_fields[1].padding = 0;
+  test.fields_num = 2;
 
 }
 
 void loop() 
 {
 
-  Serial.print("\n--COUNTER_CYCLE--\n");
+  Serial.print( "\n" );
+  Serial.print( "Tuple Out\n" );
+  ts_out( test );                   // Outing test tuple
 
 
-  result = ts_inp( template_change, &op_result );           // Getting "change_tuple" tuple from tuple space
+  delay( 1000 );
 
 
-  Serial.print("Trying to remove tuple \"tuple_change\"\n");
-  if( op_result )
-  {
+  Serial.print( "\n" );
+  Serial.print( "Tuple Rdp\n" );
+  test_tuple = ts_rdp( test, &operation_result );       // Rdping tuple from tuple space
 
-    Serial.print("Tuple removed\n");
-    if( result.tuple_fields[1].data.int_field == 0 )        // Counting changes to 0
-    {
 
-      counter_0++;                                          
-
-    }
-    else if( result.tuple_fields[1].data.int_field == 1 )   // Counting changes to 1
-    {
-
-      counter_1++;
-
-    }
-
-  }
+  // Printing retrived tuple
+  Serial.print( "Received tuple named from RDP: " );
+  Serial.print( test_tuple.name );
+  Serial.print( " with field1: " );
+  Serial.print( test_tuple.tuple_fields[0].data.int_field );
+  Serial.print( " with field2: " );
+  Serial.print( test_tuple.tuple_fields[1].data.int_field );
+  Serial.print( "\n" );
   
-  // After 5 cycles printing results
-  time_counter++;
-  if(time_counter >= 5)
-  {
 
-    Serial.print( "\nNumber of state changes from 0->1: " );
-    Serial.print( counter_1 );
-    Serial.print( "\n" );
-    Serial.print( "Number of state changes from 1->0: " );
-    Serial.print( counter_0 );
-    Serial.print( "\n" );
-    time_counter = 0;
-
-  }
-  delay(1000);
+  delay( 1000 );
 
 
+  Serial.print( "\n" );
+  Serial.print( "Tuple Inp\n" );
+  test_tuple = ts_inp( test, &operation_result );            // Inping tuple from tuple space
+
+  // Printing retrived tuple
+  Serial.print( "Received tuple named from INP: " );
+  Serial.print( test_tuple.name );
+  Serial.print( " with field1: " );
+  Serial.print( test_tuple.tuple_fields[0].data.int_field );
+  Serial.print( " with field2: " );
+  Serial.print( test_tuple.tuple_fields[1].data.int_field );
+  Serial.print( "\n" );
+
+
+  delay( 1000 );
+
+
+  Serial.print( "\n" );
+  Serial.print( "Tuple Inp\n" );
+  test_tuple = ts_inp( test, &operation_result );            // Inping one more time to show that now tuple doesn't exist in tuple space
+
+
+  // Printing retrived tuple which values should be all zeros
+  Serial.print( "Received tuple named from INP: " );
+  Serial.print( test_tuple.name );
+  Serial.print( " with field1: " );
+  Serial.print( test_tuple.tuple_fields[0].data.int_field );
+  Serial.print( " with field2: " );
+  Serial.print( test_tuple.tuple_fields[1].data.int_field );
+  Serial.print( "\n\n" );
+
+  Serial.print( "--TS_OPERATIONS_TEST_COMPLETE--\n\n");
+  delay( 5000 );
 
 }
-
-
 
 
 
@@ -621,4 +634,5 @@ tuple_t ts_rdp( tuple_t template_rdp, int *rdp_result )        // Rdp operation 
   return recv_tuple; 
       
 }
+
 

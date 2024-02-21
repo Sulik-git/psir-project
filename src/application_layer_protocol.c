@@ -8,8 +8,6 @@ static int sockfd = 0;
 static struct sockaddr other_host;
 
 
-/* TODO:
-*/
 
 // Getting address info
 int alp_getaddrinfo( char *ip, char *port, struct addrinfo *alp_addrinfo )
@@ -17,7 +15,7 @@ int alp_getaddrinfo( char *ip, char *port, struct addrinfo *alp_addrinfo )
 
     struct addrinfo h, r, *a = &r; 
 
-
+    
     memset( &h, 0, sizeof(struct addrinfo) );
     h.ai_family = PF_INET;
     h.ai_socktype = SOCK_DGRAM;

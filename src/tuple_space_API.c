@@ -1,15 +1,87 @@
 #include <stdio.h>
 #include "../headers/tuple_space_API.h"
 #include "../headers/tuple_space_linked_list.h"
+#include <stdint.h>
+#include <arpa/inet.h>
 #include <string.h>
 #define PAYLOAD_NONCHARS_SIZE 36
 
-int fieldcmp( field_t template, field_t field_2 )
+
+typedef struct
 {
-    if ( template.type == field_2.type )
+    uint32_t is_actual;
+    uint32_t type;
+    union {
+        uint32_t int_field;
+        uint32_t float_field;
+    } data;
+    uint32_t padding;
+
+}field_n_t;         // Network field struct with uint32_t 
+
+
+typedef struct 
+{
+    char name[NAME_MAX_SIZE];
+    uint32_t field_num;
+    field_n_t field[TUPLE_MAX_SIZE];
+
+}tuple_n_t;             // Network tuple struct with uint32_t
+
+
+void field_hton( field_n_t *field )                 // Changes endianess from host to network ( Little -> Big ) for whole tuple's field
+{
+
+    field->is_actual = htonl( field->is_actual );
+    field->type = htonl( field->type );
+
+
+    // Does htonl operation only for one type
+    if( field->type == TS_INT )
     {
 
-        if ( template.is_actual == TS_NO )
+        field->data.int_field = htonl( field->data.int_field );
+
+    }
+    else if( field->type == TS_FLOAT )
+    {
+
+        field->data.float_field = htonl( field->data.float_field );
+
+    }
+
+}
+
+
+void field_ntoh( field_n_t *field)                  // Changes endianess from network to host ( Big -> Little ) for whole tuple's field
+{
+
+    field->is_actual = ntohl( field->is_actual );
+    field->type = ntohl( field->type );
+
+
+    // Does htonl operation only for one type
+    if( field->type == TS_INT )
+    {
+
+        field->data.int_field = ntohl ( field->data.int_field );
+
+    }
+    else if( field->type == TS_FLOAT )
+    {
+    
+        field->data.float_field = ntohl ( field->data.float_field );
+
+    }
+
+}
+        
+int fieldcmp( field_t template, field_t field_2 )       // Comparing two fields ( template's field to tuple's field)
+{
+    if ( template.type == field_2.type )        // Checks type
+    {
+
+        if ( template.is_actual == TS_NO )      // Checks if field is not actual ( when template field is not actual then imidiately returns true )
         {
 
             return TS_SUCCESS;
@@ -18,7 +90,7 @@ int fieldcmp( field_t template, field_t field_2 )
         else
         {
 
-            if ( template.type == TS_INT )
+            if ( template.type == TS_INT )                                  // Checks for same data type
             {
                 if ( template.data.int_field == field_2.data.int_field )
                 {
@@ -58,16 +130,16 @@ int fieldcmp( field_t template, field_t field_2 )
     }
 }
 
-int idcmp( field_t id_1, field_t id_2 )
+int idcmp( field_t id_1, field_t id_2 )             // Compares ids of two fields
 {
 
-    if ( id_1.is_actual && id_2.is_actual )
+    if ( id_1.is_actual && id_2.is_actual )         // Id must be actual
     {
 
-        if ( id_1.type == TS_INT && id_2.type == TS_INT )
+        if ( id_1.type == TS_INT && id_2.type == TS_INT )   // Id must be INT
         {
 
-            if ( id_1.data.int_field == id_2.data.int_field )
+            if ( id_1.data.int_field == id_2.data.int_field )  // Checking actual value
             {
 
                 return TS_SUCCESS;
@@ -91,47 +163,103 @@ int idcmp( field_t id_1, field_t id_2 )
     }
 }
 
-void char_to_tuple( char *str, tuple_t *tuple )
+void char_to_tuple( char *str, tuple_t *tuple )                         // Changes character buffer to tuple and changes endianess of data
 {
 
-    int table[PAYLOAD_NONCHARS_SIZE / 4];
-    memcpy( (void *)tuple, (void *)str, sizeof(tuple_t) ); //Copies whole buffer to tuple to fill out name field
+    tuple_n_t network_tuple;
 
 
-    for ( int i = 0; i < PAYLOAD_NONCHARS_SIZE / 4; i++ )
+    memcpy( (void *)&network_tuple, (void *)str, sizeof(tuple_n_t) );             // Copies whole buffer to tuple to fill out name field
+    memcpy( (void *)&tuple->name, (void *)&network_tuple , NAME_MAX_SIZE );       // Copying name from network tuple to actual tuple 
+
+    
+    for( size_t s = 0; s < TUPLE_MAX_SIZE; s++)
     {
-        //For every int in message copies it to proper address in integer table to "convert" chars to ints
-        memcpy( (void *)&table[i], (void *)(str + sizeof(char) * 16 + i * sizeof(int)), sizeof(int) ); 
+        
+        field_ntoh( &network_tuple.field[s] );     // Ntoh whole field 
+
+
+        // Assaigning value after value from network tuple to actual tuple; Only one data type is assigned
+        tuple->tuple_fields[s].is_actual = (int32_t)network_tuple.field[s].is_actual;                    
+        tuple->tuple_fields[s].type = (int32_t)network_tuple.field[s].type;
+        if( network_tuple.field[s].type == TS_INT )
+        {
+
+            tuple->tuple_fields[s].data.int_field = (int32_t)network_tuple.field[s].data.int_field;
+
+        }
+        else if( network_tuple.field[s].type == TS_FLOAT )
+        {
+
+            tuple->tuple_fields[s].data.float_field = (float)network_tuple.field[s].data.float_field;
+
+        }
+        tuple->tuple_fields[s].padding = (int32_t)network_tuple.field[s].padding;
 
     }
 
-    //Copies ints from integer table directly to tuple byte by byte for PAYLOAD_NONCHARS_SIZE
-    memcpy( (void *)&tuple->tuple_len, (void *)table, PAYLOAD_NONCHARS_SIZE );
+
+    network_tuple.field_num = ntohl( network_tuple.field_num );  // Independently ntohl number of fields and then assigning it
+    tuple->tuple_len = (int32_t)network_tuple.field_num;
 
 }
 
-void tuple_to_char( tuple_t *tuple, char *str )
+
+void tuple_to_char( tuple_t *tuple, char *str )                 // Changes tuple to character buffer and changes endianess of data
 {
 
-    memcpy( (void *)str, (void *)tuple, sizeof(tuple_t) );
+    tuple_n_t network_tuple;
+
+
+    //Copies values of each element of tuple to network tuple and then changes endianess from host to network
+    memcpy( network_tuple.name, &tuple->name, NAME_MAX_SIZE );
+    network_tuple.field_num = (uint32_t)tuple->tuple_len;
+    for( size_t s = 0; s < TUPLE_MAX_SIZE; s++ )
+    {
+
+        network_tuple.field[s].is_actual = (uint32_t)tuple->tuple_fields[s].is_actual;
+        network_tuple.field[s].type = (uint32_t)tuple->tuple_fields[s].type;
+        if( network_tuple.field[s].type == TS_INT )
+        {
+
+            network_tuple.field[s].data.int_field = (uint32_t)tuple->tuple_fields[s].data.int_field;
+
+        }
+        else if( network_tuple.field[s].type == TS_FLOAT )
+        {
+
+            memcpy( &network_tuple.field[s].data.float_field, &tuple->tuple_fields->data.float_field, sizeof(float) );
+
+        }
+        network_tuple.field[s].padding = (uint32_t)tuple->tuple_fields[s].padding;
+
+
+        field_hton( &network_tuple.field[s] );
+
+    }
+    network_tuple.field_num = htonl( network_tuple.field_num );
+
+
+    //Copies bytes from network tuple to char buffer
+    memcpy( (void *)str, (void *)&network_tuple, sizeof(tuple_n_t) );
 
 }
 
-void ts_out( tuple_t tuple )
+void ts_out( tuple_t tuple )                // Adds tuple to tuple_space
 {
 
     add_to_space( tuple ); 
 
 }
 
-void ts_inp( tuple_t template, tuple_t *retrive_tuple, int *inp_result )
+void ts_inp( tuple_t template, tuple_t *retrive_tuple, int *inp_result )        // Retrives tuple form tuple field deleting it and sets operation result
 {
 
     remove_from_space( template, retrive_tuple, inp_result ); 
 
 }
 
-void ts_rdp( tuple_t template, tuple_t *retrive_tuple, int *rdp_result )
+void ts_rdp( tuple_t template, tuple_t *retrive_tuple, int *rdp_result )        // Retrives tuple form tuple field without deleting and sets operation result
 {
 
     retrive_from_space( template, retrive_tuple, rdp_result ); 

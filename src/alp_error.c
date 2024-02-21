@@ -23,7 +23,7 @@ int alp_error = 0;
 int errno_save = 0;
 
 
-int check_error( int error )
+int check_error( int error )    // Checks if given value is error number and prints proper error message
 {
 
     if ( error < 0 )

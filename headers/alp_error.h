@@ -28,6 +28,6 @@
 extern int errno;
 
 
-int check_error( int error );
+int check_error( int error ); // Checks if function returns error code 
 
 #endif
