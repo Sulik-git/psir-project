@@ -233,17 +233,17 @@ int check_if_prime( int32_t number)   // Checking if given number is prime
 
     }
 
+    if ( counter > 2)
+    {
+
+      return 0;
+
+    }
+
   }
 
 
-  if ( counter <= 2)
-  {
-    return 1;
-  }
-  else
-  {
-    return 0;
-  }
+  return 1;
 
 }
 
