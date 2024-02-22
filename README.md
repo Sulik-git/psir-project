@@ -95,18 +95,16 @@ When it is equal number of sent tuples Manager goes into "--PRINTING_RESULTS_PHA
 Second application is responsible for simulating reading from GPIO pin which is represented as counting changes in read data. There are two nodes - Sensor and Counter.
 
 ### Presentation
-Sensor reads data from digital pin which can be in state 1 or 0. This behaviour is simulated by reading from earlier prepared environment file where states of each pin are set in time.
+Sensor reads data from digital pin which can be in state 1 or 0. This behaviour is simulated by reading from earlier prepared environment file where states of each pin are set in time. When change in state is sensed Sensor sends tuple indicating if state changed from 0 to 1 or from 1 to 0.
 
-gif
+![App2 sensing](https://github.com/Sulik5/psir-project/assets/47953589/5e7c170d-530f-44d2-8424-297fa087a25f)
 
-When change in state is sensed Sensor sends tuple indicating if state changed from 0 to 1 or from 1 to 0.
-
-gif
 
 Counter periodicly asks server for tuple with result. When it receives one checks which change occured and increments proper counter.
 After few cycles Counter prints results
 
-gif
+![App2 removing](https://github.com/Sulik5/psir-project/assets/47953589/79ec59a3-14cf-4d25-93e2-0bb137844910)
+
 
 
 
