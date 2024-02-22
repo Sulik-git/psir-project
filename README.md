@@ -74,7 +74,8 @@ Manager node puts tuples with numbers that need to be checked.
 
 Worker periodicly asks server for tuple to check.
 
-gif
+![Wrorker trying to remove tuple](https://github.com/Sulik5/psir-project/assets/47953589/041a47c0-c5fb-4e3d-a503-ae468d9d3ef6)
+
 
 Worker checks whether received number is prime number and sends result to Tuple Space.
 
