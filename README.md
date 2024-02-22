@@ -10,7 +10,7 @@ Project was about implementing tuple space as a server operating in Linux enviro
 
 
 ## Application Layer Protocol
-    2                  14   15    16
+         2                  14   15    16
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     | PT |  sequenuce_number | OP | Ack |
     +----+-------------------+----+-----+
