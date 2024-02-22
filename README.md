@@ -69,7 +69,8 @@ First application is responsible for checking if specific numbers are prime numb
 ### Presentation
 Manager node puts tuples with numbers that need to be checked.
 
-gif
+![Animation](https://github.com/Sulik5/psir-project/assets/47953589/f29bc9d5-329d-4b9b-8715-51904bb2e91e)
+
 
 Worker periodicly asks server for tuple to check.
 
