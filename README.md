@@ -78,17 +78,18 @@ Worker periodicly asks server for tuple to check.
 ![Wrorker trying to remove tuple](https://github.com/Sulik5/psir-project/assets/47953589/362537c1-d824-47aa-b7dd-453e1141245e)
 
 
-Worker checks whether received number is prime number and sends result to Tuple Space.
+After receiving valid tuple Worker checks whether received number is prime number and sends result to Tuple Space.
 
-gif
+![Wrorker trying to remove tuple](https://github.com/Sulik5/psir-project/assets/47953589/dd066c3c-abbd-4dab-ba03-ba9adc3cab87)
 
 Manager in "--GETTING_RESULTS_PHASE--" asks server for tuples containing results. When manager receives valid result it increments counter. 
 
-gif
+![Getting results phase](https://github.com/Sulik5/psir-project/assets/47953589/8f371010-9724-4962-8e75-c9b91b8a88dd)
 
 When it is equal number of sent tuples Manager goes into "--PRINTING_RESULTS_PHASE--".
 
-gif
+![Printing results](https://github.com/Sulik5/psir-project/assets/47953589/35cfda06-b60c-4d22-a701-19d6100c32ad)
+
 
 ## Application 2
 Second application is responsible for simulating reading from GPIO pin which is represented as counting changes in read data. There are two nodes - Sensor and Counter.
