@@ -6,7 +6,7 @@ Project was about implementing tuple space as a server operating in Linux enviro
 
 ## Dependency Diagram 
 
-![Dependency_Diagram](Tuple_Space_implementation.png)
+![Dependency_Diagram](Tuple_Space.png)
 
 
 ## Application Layer Protocol
