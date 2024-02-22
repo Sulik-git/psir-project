@@ -80,7 +80,7 @@ Worker periodicly asks server for tuple to check.
 
 After receiving valid tuple Worker checks whether received number is prime number and sends result to Tuple Space.
 
-![Wrorker trying to remove tuple](https://github.com/Sulik5/psir-project/assets/47953589/dd066c3c-abbd-4dab-ba03-ba9adc3cab87)
+![Worker checking if prime](https://github.com/Sulik5/psir-project/assets/47953589/11efb094-0223-4fc2-813d-39215687779e)
 
 Manager in "--GETTING_RESULTS_PHASE--" asks server for tuples containing results. When manager receives valid result it increments counter. 
 
