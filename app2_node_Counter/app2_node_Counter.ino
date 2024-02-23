@@ -94,16 +94,10 @@ struct alp_header                                     // ALP header struct
 };
 
 
-struct payload                                        // Struct containing 8 bits of payload - couldn't make bit field of size required for whole payload so alp is using array of structs of 8 bits  
-{
-    uint8_t payload : 8;
-};
-
-
 struct alp_message                                    // Alp message struct
 {
     struct alp_header header;                         // Alp header
-    struct payload payload[PAYLOAD_SIZE];             // Array of 8 bit payload structs of PAYLOAD_SIZE
+    uint8_t payload[PAYLOAD_SIZE];             // Array of 8 bit payload structs of PAYLOAD_SIZE
 };
 
 
