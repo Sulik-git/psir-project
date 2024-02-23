@@ -44,18 +44,12 @@ struct alp_header
 
 };                              // Application layer protocol message header
 
-struct alp_payload
-{
-
-    uint8_t block : 8;
-
-};                                      // Struct with 8 bits of payload
 
 struct alp_message
 {
 
     struct alp_header header;
-    struct alp_payload payload[PAYLOAD_SIZE];
+    uint8_t payload[PAYLOAD_SIZE];
 
 };                                      // Alp message struct 
 
