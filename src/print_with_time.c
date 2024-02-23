@@ -1,4 +1,4 @@
-#include "../headers/timer.h"
+#include "../headers/print_with_time.h"
 #include <stdio.h>
 #include <time.h>
 

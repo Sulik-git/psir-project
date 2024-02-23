@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../headers/timer.h"
+#include "../headers/print_with_time.h"
 
 #define TUPLE_LEN_CHECK_PHASE 0
 #define RESET_CHECK_PHASE 0
