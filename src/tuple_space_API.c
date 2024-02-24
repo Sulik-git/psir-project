@@ -1,32 +1,9 @@
 #include <stdio.h>
 #include "../headers/tuple_space_API.h"
 #include "../headers/tuple_space_linked_list.h"
-#include <stdint.h>
 #include <arpa/inet.h>
 #include <string.h>
 #define PAYLOAD_NONCHARS_SIZE 36
-
-
-typedef struct
-{
-    uint32_t is_actual;
-    uint32_t type;
-    union {
-        uint32_t int_field;
-        uint32_t float_field;
-    } data;
-    uint32_t padding;
-
-}field_n_t;         // Network field struct with uint32_t 
-
-
-typedef struct 
-{
-    char name[NAME_MAX_SIZE];
-    uint32_t field_num;
-    field_n_t field[TUPLE_MAX_SIZE];
-
-}tuple_n_t;             // Network tuple struct with uint32_t
 
 
 void field_hton( field_n_t *field )                 // Changes endianess from host to network ( Little -> Big ) for whole tuple's field

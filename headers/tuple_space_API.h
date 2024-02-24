@@ -1,6 +1,7 @@
 #ifndef TUPLE_SPACE_API_H
 #define TUPLE_SPACE_API_H
 
+#include <stdint.h>
 
 #define TS_YES 1
 #define TS_NO 0
@@ -37,6 +38,28 @@ typedef struct
     field_t tuple_fields[TUPLE_MAX_SIZE]; // 32B   Tuple's fields
 
 } tuple_t; // 52B        Struct representation of tuple
+
+
+typedef struct
+{
+    uint32_t is_actual;
+    uint32_t type;
+    union {
+        uint32_t int_field;
+        uint32_t float_field;
+    } data;
+    uint32_t padding;
+
+}field_n_t;         // Network field struct with uint32_t 
+
+
+typedef struct 
+{
+    char name[NAME_MAX_SIZE];
+    uint32_t field_num;
+    field_n_t field[TUPLE_MAX_SIZE];
+
+} tuple_n_t;             // Network tuple struct with uint32_t
 
 int fieldcmp( field_t template, field_t field_2 );      // Compares two fields and returns 1 if both are the same ( also true in case of template's field being not actual )
 
