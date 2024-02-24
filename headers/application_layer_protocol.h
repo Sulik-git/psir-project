@@ -42,7 +42,7 @@ struct alp_header
     uint8_t op_result : 1;               // Inp and rdp operation result (1 if tuple retrived, 0 if tuple not retrived)
     uint8_t acknowledge : 1;             // 1 if message is acknowledge
 
-};                              // Application layer protocol message header
+} __attribute__((packed));                              // Application layer protocol message header
 
 
 struct alp_message
@@ -51,7 +51,14 @@ struct alp_message
     struct alp_header header;
     uint8_t payload[PAYLOAD_SIZE];
 
-};                                      // Alp message struct 
+} __attribute__((packed));                                      // Alp message struct 
+
+struct alp_message_n                                            // Alp message network struct used for converting header endianess from host to network and otherwise
+{
+    uint16_t header;
+    uint8_t payload[PAYLOAD_SIZE];
+
+} __attribute__((packed));
 
 int alp_init( char *port );                                     // Initializes socket
 int alp_send( char *message, int operation, int op_result );    // Sends alp message

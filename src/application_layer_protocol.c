@@ -8,6 +8,13 @@ static int sockfd = 0;
 static struct sockaddr other_host;
 
 
+/* TODO:
+    - Add hton and ntoh in alp_header
+    - Add message seriaization for instance MessagePack
+    - Add dynamic alp_messages (if message is ack send only header etc.)
+*/
+
+
 
 // Getting address info
 int alp_getaddrinfo( char *ip, char *port, struct addrinfo *alp_addrinfo )
@@ -114,56 +121,89 @@ int check_operation( struct alp_message message )
 
 }
 
-int prepare_alp_message( char *message, struct alp_message *msg_to_prepare, int operation, int rdp_flag )
+
+void alp_header_hton( struct alp_message *temp_message, struct alp_message_n *network_message ) // Changes endiannes from host to network in header
 {
 
+    memcpy( (void *)&network_message->header, (void *)&temp_message->header, sizeof(uint16_t) );
+    
+
+    network_message->header = htons(network_message->header);
+
+}
+
+
+void alp_header_ntoh( struct alp_message_n *received_network_message, struct alp_message *received_message ) // Changes endiannes from network to host in header
+{
+
+    received_network_message->header = ntohs(received_network_message->header);
+    
+    memcpy( (void *)&received_message->header, (void *)&received_network_message->header, sizeof(uint16_t) );
+
+}
+
+
+int prepare_alp_message( char *message, struct alp_message_n *msg_to_prepare, int operation, int op_flag ) // Perpares alp_message by setting header flags with proper values and copies payload to alp_message structure 
+{
+
+    struct alp_message temp_alp_buffor;
+
+
+    // Zeroing structs
+    memset( (void *)&temp_alp_buffor, 0, sizeof(struct alp_message));
+    memset( (void *)msg_to_prepare, 0, sizeof(struct alp_message_n) );
+
+
+    // Preparing message accordingly to selected operation
     if ( operation == ALP_ACK_OPERATION )
     {
          
-        memset( msg_to_prepare, 0, sizeof(struct alp_message) );
-        msg_to_prepare->header.acknowledge = ALP_BIN_ACK_FLAG;
-        msg_to_prepare->header.payload_type = ALP_BIN_ACK_PAYLOAD;
-        msg_to_prepare->header.sequence_number = 0b0;
+        temp_alp_buffor.header.acknowledge = ALP_BIN_ACK_FLAG;
+        temp_alp_buffor.header.payload_type = ALP_BIN_ACK_PAYLOAD;
+        temp_alp_buffor.header.sequence_number = 0b0;
+
+
+        alp_header_hton( &temp_alp_buffor, msg_to_prepare );
 
     }
-    if ( operation == ALP_RDP_OPERATION )
+    else if ( operation == ALP_RDP_OPERATION )
     {
 
-        memset( msg_to_prepare, 0, sizeof(struct alp_message) );
-        msg_to_prepare->header.payload_type = ALP_BIN_RDP_PAYLOAD;
-        msg_to_prepare->header.sequence_number = 0b0;
+        temp_alp_buffor.header.payload_type = ALP_BIN_RDP_PAYLOAD;
+        temp_alp_buffor.header.sequence_number = 0b0;
 
 
-        if ( rdp_flag )
+        if ( op_flag )
         {
-            msg_to_prepare->header.op_result = ALP_BIN_OP_YES_FLAG;
+            temp_alp_buffor.header.op_result = ALP_BIN_OP_YES_FLAG;
         }
         else
         {
-            msg_to_prepare->header.op_result = ALP_BIN_OP_NO_FLAG;
+            temp_alp_buffor.header.op_result = ALP_BIN_OP_NO_FLAG;
         }
 
 
+        alp_header_hton( &temp_alp_buffor, msg_to_prepare );
         memcpy( (void *)&msg_to_prepare->payload, (void *)message, PAYLOAD_SIZE );
 
     }
-    if ( operation == ALP_INP_OPERATION )
+    else if ( operation == ALP_INP_OPERATION )
     {
 
-        memset( msg_to_prepare, 0, sizeof(struct alp_message) );
-        msg_to_prepare->header.payload_type = ALP_BIN_INP_PAYLOAD;
-        msg_to_prepare->header.sequence_number = 0b0;
-
-        if ( rdp_flag )
+        temp_alp_buffor.header.payload_type = ALP_BIN_INP_PAYLOAD;
+        temp_alp_buffor.header.sequence_number = 0b0;
+        
+        if ( op_flag )
         {
-            msg_to_prepare->header.op_result = ALP_BIN_OP_YES_FLAG;
+            temp_alp_buffor.header.op_result = ALP_BIN_OP_YES_FLAG;
         }
         else
         {
-            msg_to_prepare->header.op_result = ALP_BIN_OP_NO_FLAG;
+            temp_alp_buffor.header.op_result = ALP_BIN_OP_NO_FLAG;
         }
 
 
+        alp_header_hton( &temp_alp_buffor, msg_to_prepare );
         memcpy( (void *)&msg_to_prepare->payload, (void *)message, PAYLOAD_SIZE );
 
     }
@@ -174,7 +214,7 @@ int prepare_alp_message( char *message, struct alp_message *msg_to_prepare, int 
 }
 
 // Alp sendto() implemntation
-int alp_sendto( struct alp_message *message, int alp_message_len, struct sockaddr *a_in, int a_in_len )
+int alp_sendto( struct alp_message_n *message, int alp_message_len, struct sockaddr *a_in, int a_in_len )
 {
     int sent = 0;
     char msg[ALP_MESSAGE_MAXSIZE];
@@ -227,12 +267,13 @@ int alp_recvfrom( char *buffer, int buffer_len, struct sockaddr *a_in, int a_in_
 
 }
 
-int alp_send_routine( char *message, int operation, int rdp_result )
+int alp_send_routine( char *message, int operation, int op_result )
 {
 
     // Initializations
     struct sockaddr saved_other_host;
-    struct alp_message send_message;
+    struct alp_message_n send_network_message;
+    struct alp_message_n inc_network_message;
     struct alp_message inc_message;
     char buff[ALP_MESSAGE_MAXSIZE];
     int resend_counter = 0;
@@ -246,16 +287,16 @@ int alp_send_routine( char *message, int operation, int rdp_result )
 
 
     // Preparing sets for select()
-    memset( &inc_message, 0, sizeof(struct alp_message) );
-    memset( &send_message, 0, sizeof(struct alp_message) );
-    memset( &saved_other_host, 0, sizeof(struct sockaddr) );
+    memset( (void *)&inc_network_message, 0, sizeof(struct alp_message_n) );
+    memset( (void *)&send_network_message, 0, sizeof(struct alp_message_n) );
+    memset( (void *)&inc_message, 0, sizeof(struct alp_message) );
+    memset( (void *)&saved_other_host, 0, sizeof(struct sockaddr) );
 
 
-    prepare_alp_message( message, &send_message, operation, rdp_result );
-
+    prepare_alp_message( message, &send_network_message, operation, op_result );
 
     // Sending first message and starting timeout clock
-    alp_error = alp_sendto( &send_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(other_host) );
+    alp_error = alp_sendto( &send_network_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(other_host) );
     if ( check_error(alp_error) )
     {
 
@@ -299,7 +340,10 @@ int alp_send_routine( char *message, int operation, int rdp_result )
                 }
 
 
-                memcpy( (void *)&inc_message, (void *)buff, ALP_MESSAGE_MAXSIZE );
+                memcpy( (void *)&inc_network_message, (void *)buff, ALP_MESSAGE_MAXSIZE );
+
+                alp_header_ntoh( &inc_network_message, &inc_message );
+
                 if ( (strcmp(saved_other_host.sa_data, other_host.sa_data)) == 0 && inc_message.header.acknowledge & ALP_BIN_ACK_FLAG ) // Checking if address is the same as the one that was object of sending and checking for Ack flag
                 {
 
@@ -318,7 +362,7 @@ int alp_send_routine( char *message, int operation, int rdp_result )
             if ( resend_counter < 6 )
             {
 
-                alp_error = alp_sendto( &send_message, ALP_MESSAGE_MAXSIZE, &saved_other_host, sizeof(saved_other_host) );
+                alp_error = alp_sendto( &send_network_message, ALP_MESSAGE_MAXSIZE, &saved_other_host, sizeof(saved_other_host) );
                 if ( alp_error == SENDTO_ERROR ) // Resending message in case of timeout
                 {
                     return SEND_ROUTINE_RESEND_ERROR;
@@ -358,18 +402,20 @@ int alp_recv_routine( char *recv_message )
     struct timeval stv;
     stv.tv_sec = 1;
     stv.tv_usec = 0;
-    struct alp_message ack_message, recv_alp_message;
+    struct alp_message_n ack_network_message, recv_network_message;
+    struct alp_message recv_alp_message;
     static char buff[ALP_MESSAGE_MAXSIZE];
     fd_set readfds, readyfds;
 
 
     // Preparing ack message
-    prepare_alp_message( NULL, &ack_message, ALP_ACK_OPERATION, 0 );
+    prepare_alp_message( NULL, &ack_network_message, ALP_ACK_OPERATION, 0 );
 
 
     // Preperaing sets for select()
-    memset( &other_host, 0, sizeof(struct sockaddr) );
-    memset( &recv_alp_message, 0, sizeof(struct alp_message) );
+    memset( (void *)&other_host, 0, sizeof(struct sockaddr) );
+    memset( (void *)&recv_network_message, 0, sizeof(struct alp_message_n) );
+    memset( (void *)&recv_alp_message, 0, sizeof(struct alp_message) );
     FD_ZERO( &readfds );
     FD_SET( sockfd, &readfds );
 
@@ -401,7 +447,7 @@ int alp_recv_routine( char *recv_message )
             printnl_with_time( "ALP: Received Payload message" );
 
 
-            alp_error = alp_sendto( &ack_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(struct sockaddr) );
+            alp_error = alp_sendto( &ack_network_message, ALP_MESSAGE_MAXSIZE, &other_host, sizeof(struct sockaddr) );
             if ( check_error(alp_error) )
             {
 
@@ -414,8 +460,9 @@ int alp_recv_routine( char *recv_message )
 
 
             // Converting chars for alp_message and memcpying to provided address
-            memcpy( (void *)&recv_alp_message, (void *)buff, ALP_MESSAGE_MAXSIZE );
-            memcpy( (void *)recv_message, (void *)&recv_alp_message.payload, PAYLOAD_SIZE );
+            memcpy( (void *)&recv_network_message, (void *)buff, ALP_MESSAGE_MAXSIZE ); 
+            alp_header_ntoh( &recv_network_message, &recv_alp_message );
+            memcpy( (void *)recv_message, (void *)&recv_network_message.payload, PAYLOAD_SIZE );
 
         }
     }
