@@ -91,14 +91,20 @@ struct alp_header                                     // ALP header struct
     uint16_t sequence_number : 12;                    // Sequence number = 12 bits; NOT IMPLEMENTED
     uint8_t op_result : 1;                            // Operation result = 1 bit; 0 - Tuple not present in tuple_space, 1 - Tuple present in tuple_space and retrived
     uint8_t acknowledge : 1;                          // Acknowledge = 1 bit; 1 - Alp message is ack message
-};
+} __attribute__((packed));
 
 
 struct alp_message                                    // Alp message struct
 {
     struct alp_header header;                         // Alp header
-    uint8_t payload[PAYLOAD_SIZE];             // Array of uint8_t containing payload
-};
+    uint8_t payload[PAYLOAD_SIZE];                    // Array of uint8_t containing payload
+} __attribute__((packed));
+
+struct alp_message_n
+{
+  uint16_t header;
+  uint8_t payload[PAYLOAD_SIZE];
+} __attribute__((packed));
 
 
 void prepare_alp_message( unsigned char *payload, struct alp_message *msg_to_send, int operation );            // Prepare alp message with given payload and operation
@@ -265,6 +271,19 @@ uint32_t ntohl( uint32_t netlong )              // Returns uint32 with changed e
            ( (netlong & 0xFF000000) >> 24 );
 }
 
+uint16_t ntohs(uint16_t netshort) 
+{
+
+    return ((netshort & 0xFF00) >> 8) | ((netshort & 0x00FF) << 8);
+
+}
+
+uint16_t htons(uint16_t netshort) 
+{
+
+    return ((netshort & 0xFF00) >> 8) | ((netshort & 0x00FF) << 8);
+
+}
 
 
 void field_hton( field_n_t *field )              // Changes endianess of every element of field_t struct from host to network
@@ -289,7 +308,26 @@ void field_hton( field_n_t *field )              // Changes endianess of every e
 
 }
 
+void alp_header_ntoh( struct alp_message_n *recv_network_message, struct alp_message *recv_message ) // Changes endianess in alp_header from network to host
+{
 
+    recv_network_message->header = ntohs(recv_network_message->header);
+
+
+    memcpy( (void *)&recv_message->header, (void *)&recv_network_message->header, sizeof(uint16_t) );
+
+}
+
+
+void alp_header_hton( struct alp_message *message, struct alp_message_n *network_message ) // Changes endianess in alp_header from host to network
+{
+
+    memcpy( (void *)&network_message->header, (void *)&message->header, sizeof(uint16_t) );
+
+
+    network_message->header = htons(network_message->header);
+
+}
 
 void field_ntoh( field_n_t *field )             // Changes endianess of every element of field_t struct from network to host
 {
@@ -330,6 +368,8 @@ void alp_init( byte *mac, int local_port )          // Initializes MAC and local
 void alp_send( unsigned char *payload, int operation )    // Sends alp message with given payload
 {
 
+  
+  struct alp_message_n network_msg;
   struct alp_message msg;
   unsigned char send_buff[ALP_MESSAGE_MAXSIZE] = {0}; 
   unsigned char recv_buff[ALP_MESSAGE_MAXSIZE] = {0};
@@ -338,12 +378,15 @@ void alp_send( unsigned char *payload, int operation )    // Sends alp message w
   int packetSize = 0;
 
 
+  memset( (void *)&msg, 0, sizeof(struct alp_message) );
+
   //Prepares alp message for sending
 
     //Serial.print( "ALP: Preparing ALP message...\n" );
-  prepare_alp_message( payload, &msg, operation );
-  memcpy( (void *)send_buff, (void *)&msg, ALP_MESSAGE_MAXSIZE ); 
+  prepare_alp_message( payload, &network_msg, operation );
+  memcpy( (void *)send_buff, (void *)&network_msg, ALP_MESSAGE_MAXSIZE );
     //Serial.print( "ALP: Message prepared\n" );
+
 
 
   // Gets time from ZsutMilis to calculate not receiving ack timeout
@@ -371,7 +414,11 @@ void alp_send( unsigned char *payload, int operation )    // Sends alp message w
 
 
       // Copying memory from received buffer to alp message struct and checking ACK flag 
-      memcpy( (void *)&msg, (void *)recv_buff, ALP_MESSAGE_MAXSIZE );
+      memset( (void *)&network_msg, 0, sizeof(struct alp_message_n) );
+      memcpy( (void *)&network_msg, (void *)recv_buff, ALP_MESSAGE_MAXSIZE );
+
+      alp_header_ntoh( &network_msg, &msg );
+
       if( msg.header.acknowledge & ALP_BIN_ACK_FLAG )
       {
 
@@ -409,14 +456,18 @@ void alp_send( unsigned char *payload, int operation )    // Sends alp message w
 int alp_recv( unsigned char *recv_payload, int *op_result )
 {
 
+  struct alp_message_n network_msg;
   struct alp_message msg;
   unsigned char recv_buffor[ALP_MESSAGE_MAXSIZE] = {0};
   unsigned char send_buffor[ALP_MESSAGE_MAXSIZE] = {0};
   int packetSize = 0;
 
+
+  memset( (void *)&msg, 0, sizeof(struct alp_message) );
+
   //Prepares ACK alp message for sending
-  prepare_alp_message( NULL, &msg, ALP_ACK_OPERATION );
-  memcpy( (void *)send_buffor, (void *)&msg, ALP_MESSAGE_MAXSIZE );
+  prepare_alp_message( NULL, &network_msg, ALP_ACK_OPERATION );
+  memcpy( (void *)send_buffor, (void *)&network_msg, ALP_MESSAGE_MAXSIZE );
 
 
   // Looping unless receiving something
@@ -442,9 +493,10 @@ int alp_recv( unsigned char *recv_payload, int *op_result )
   
 
   // Copying memory from received buffer to alp message struct and then from struct alp_message payload to given to function buffer 
-  memcpy( (void *)&msg, (void *)recv_buffor, ALP_MESSAGE_MAXSIZE );
+  memcpy( (void *)&network_msg, (void *)recv_buffor, ALP_MESSAGE_MAXSIZE );
+  alp_header_ntoh( &network_msg, &msg );
   *op_result = msg.header.op_result;                                          // Setting operation result
-  memcpy( (void *)recv_payload, (void *)&msg.payload, PAYLOAD_SIZE );
+  memcpy( (void *)recv_payload, (void *)&network_msg.payload, PAYLOAD_SIZE );
   
   
   return packetSize;
@@ -453,52 +505,60 @@ int alp_recv( unsigned char *recv_payload, int *op_result )
 
 
 
-void prepare_alp_message( unsigned char *payload, struct alp_message *msg_to_send, int operation )    // Prepare alp message with given payload and operation
+void prepare_alp_message( unsigned char *payload, struct alp_message_n *msg_to_send, int operation )    // Prepare alp message with given payload and operation
 {
 
+    struct alp_message temp_msg;
     // Zeroing memory of given struct
-    memset( msg_to_send, 0, sizeof(struct alp_message) );
+    memset( (void *)msg_to_send, 0, sizeof(struct alp_message_n) );
+    memset( (void *)&temp_msg, 0, sizeof(struct alp_message) );
 
 
     // Checking for operation type, setting every alp_header field accordingly and copying payload form given buffer to msg_to_send struct
     if ( operation == ALP_ACK_OPERATION )
     {
         
-        msg_to_send->header.acknowledge = ALP_BIN_ACK_FLAG;
-        msg_to_send->header.payload_type = ALP_BIN_ACK_PAYLOAD;
-        msg_to_send->header.sequence_number = 0b0;
+        temp_msg.header.acknowledge = ALP_BIN_ACK_FLAG;
+        temp_msg.header.payload_type = ALP_BIN_ACK_PAYLOAD;
+        temp_msg.header.sequence_number = 0b0;
+
+
+        alp_header_hton( &temp_msg, msg_to_send );
 
     }
     if ( operation == ALP_OUT_OPERATION )
     {
         
-        msg_to_send->header.acknowledge = 0b0;
-        msg_to_send->header.payload_type = ALP_BIN_OUT_PAYLOAD;
-        msg_to_send->header.sequence_number = 0b0;
+        temp_msg.header.acknowledge = 0b0;
+        temp_msg.header.payload_type = ALP_BIN_OUT_PAYLOAD;
+        temp_msg.header.sequence_number = 0b0;
 
 
+        alp_header_hton( &temp_msg, msg_to_send );
         memcpy( (void *)&msg_to_send->payload, (void *)payload, PAYLOAD_SIZE );
 
     }
     if ( operation == ALP_RDP_OPERATION )
     {
         
-        msg_to_send->header.acknowledge = 0b0;
-        msg_to_send->header.payload_type = ALP_BIN_RDP_PAYLOAD;
-        msg_to_send->header.sequence_number = 0b0;
+        temp_msg.header.acknowledge = 0b0;
+        temp_msg.header.payload_type = ALP_BIN_RDP_PAYLOAD;
+        temp_msg.header.sequence_number = 0b0;
 
 
+        alp_header_hton( &temp_msg, msg_to_send );
         memcpy( (void *)&msg_to_send->payload, (void *)payload, PAYLOAD_SIZE );
 
     }
     if ( operation == ALP_INP_OPERATION )
     {
         
-        msg_to_send->header.acknowledge = 0b0;
-        msg_to_send->header.payload_type = ALP_BIN_INP_PAYLOAD;
-        msg_to_send->header.sequence_number = 0b0;
+        temp_msg.header.acknowledge = 0b0;
+        temp_msg.header.payload_type = ALP_BIN_INP_PAYLOAD;
+        temp_msg.header.sequence_number = 0b0;
 
 
+        alp_header_hton( &temp_msg, msg_to_send );
         memcpy( (void *)&msg_to_send->payload, (void *)payload, PAYLOAD_SIZE );
 
     }
