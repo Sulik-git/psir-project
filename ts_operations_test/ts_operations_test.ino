@@ -31,7 +31,7 @@
 
 typedef struct
 {
-    int32_t is_actual;                // 1 if field is actual field or 0 when field is template
+    int32_t is_actual;                // 1 if field is actual field or 0 when field is any value with specific type
     int32_t type;                     // 1 if field is float type or 0 when field is int type 
     union                             
     {
