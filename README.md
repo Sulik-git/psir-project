@@ -113,4 +113,5 @@ After few cycles Counter prints results
 * One of weaknesses of this implementation is its lack of proper serialization. Serializing data to MessagePack or other binary serialization method should be implemented.
 * Server is really vurnelable in terms of interpreting received data. When bad data is delivered server interprets it as it was properly structured tuple which can result in adding corrupted tuples. Data corectness checking should be added.
 * ALP header's sequence number is not implemented. Potential future upgrade.
+  
 ✔️ Changing endianess is only used for payload. Should be extended two whole ALP message.
